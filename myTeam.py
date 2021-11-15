@@ -51,6 +51,43 @@ class DummyAgent(CaptureAgent):
   You should look at baselineTeam.py for more details about how to
   create an agent as this is the bare minimum.
   """
+  '''
+  inherited constructer:
+
+  def __init__( self, index, timeForComputing = .1 ):
+    """
+    Lists several variables you can query:
+    self.index = index for this agent
+    self.red = true if you're on the red team, false otherwise
+    self.agentsOnTeam = a list of agent objects that make up your team
+    self.distancer = distance calculator (contest code provides this)
+    self.observationHistory = list of GameState objects that correspond
+        to the sequential order of states that have occurred so far this game
+    self.timeForComputing = an amount of time to give each turn for computing maze distances
+        (part of the provided distance calculator)
+    """
+    # Agent index for querying state
+    self.index = index
+
+    # Whether or not you're on the red team
+    self.red = None
+
+    # Agent objects controlling you and your teammates
+    self.agentsOnTeam = None
+
+    # Maze distance calculator
+    self.distancer = None
+
+    # A history of observations
+    self.observationHistory = []
+
+    # Time to spend each turn on computing maze distances
+    self.timeForComputing = timeForComputing
+
+    # Access to the graphics
+    self.display = None
+  
+  '''
 
   def registerInitialState(self, gameState):
     """
@@ -89,4 +126,13 @@ class DummyAgent(CaptureAgent):
     '''
 
     return random.choice(actions)
+
+class firstAgent:
+
+  def registerInitialState(self, gameState):
+    
+    pass
+  def chooseAction(self, gameState):
+
+    pass
 
