@@ -65,8 +65,23 @@ class MyAgent(CaptureAgent):
     self.observationHistory = []
 
 
+  def readWeights(self):
+    try:
+      f = open ('weights.txt', 'r')
+      lines = f.readLines()
+      for l in lines.split(","):
+        self.weights[l[0]] = float(l[1])
+    except:
+      pass
+
+  def writeWeights(self):
+    f = open("weights", "w")
+    for w in self.weights:
+      f.write(w + "," + str(self.weights[w])+"\n")
+    f.close()
+
   def registerInitialState(self, gameState):
-    pass
+    self.readWeights()
 
   def chooseAction(self, gameState):
     """
@@ -126,14 +141,22 @@ class MyAgent(CaptureAgent):
     #getCapsules returns list of positions
     #getNumFood()
     #getFood()
+
+
+    #IMPORTANT: Need to generalize for both colors. Make it our food, their food
+
     features = util.Counter()
     features['score'] = gameState.getScore()
     features['numFood'] = len(gameState.getRedFood().asList())
     features['height'] = gameState.getAgentPosition(self.index)[1] 
     features['xPos'] = gameState.getAgentPosition(self.index)[0]
 
+    agentLocs = []
+    for i in range (3): 
+      agentLocs.append(gameState.getAgentPosition(i))
 
-    
+    blueIndeces = gameState.getBlueTeamIndices()
+    redIndeces = gameState.getRedTeamIndices()
 
     return features
   
@@ -150,6 +173,8 @@ class MyAgent(CaptureAgent):
     features = self.getFeatures(gameState, action)
     for f in features:
       weights[f] = weights[f] + (self.alpha * difference *features[f])
+
+
 
     self.weights.normalize()
 

@@ -639,6 +639,7 @@ class Game:
             else:
                 observation = self.state.deepCopy()
 
+
             # Solicit an action
             action = None
             self.mute(agentIndex)
@@ -713,6 +714,10 @@ class Game:
 
             if _BOINC_ENABLED:
                 boinc.set_fraction_done(self.getProgress())
+
+        for a in self.agents:
+            if "writeWeights" in dir (a):
+                a.writeWeights()
 
         # inform a learning agent of the game result
         for agentIndex, agent in enumerate(self.agents):
