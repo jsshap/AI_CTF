@@ -1020,12 +1020,8 @@ if __name__ == '__main__':
 
   > python capture.py --help
   """
-  from myTeam import ApproximateQAgent
-  a =  ApproximateQAgent()
-  a.accumTrainRewards
   options = readCommand( sys.argv[1:] ) # Get game components based on input
   games = runGames(**options)
-
 
   save_score(games[0])
   # import cProfile
