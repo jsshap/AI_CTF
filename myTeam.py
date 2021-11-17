@@ -39,181 +39,24 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
   # The following line is an example only; feel free to change it.
-  a = QLearningAgent()
-  b = QLearningAgent()
-  print "HEYO"
+  a = ApproximateQAgent()
+  b = ApproximateQAgent()
   return [a, b]
 
 ##########
 # Agents #
 ##########
 
-class DummyAgent(CaptureAgent):
-  """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
-  """
-  '''
-  inherited constructer:
 
-  def __init__( self, index, timeForComputing = .1 ):
-    """
-    Lists several variables you can query:
-    self.index = index for this agent
-    self.red = true if you're on the red team, false otherwise
-    self.agentsOnTeam = a list of agent objects that make up your team
-    self.distancer = distance calculator (contest code provides this)
-    self.observationHistory = list of GameState objects that correspond
-        to the sequential order of states that have occurred so far this game
-    self.timeForComputing = an amount of time to give each turn for computing maze distances
-        (part of the provided distance calculator)
-    """
-    # Agent index for querying state
-    self.index = index
-
-    # Whether or not you're on the red team
-    self.red = None
-
-    # Agent objects controlling you and your teammates
-    self.agentsOnTeam = None
-
-    # Maze distance calculator
-    self.distancer = None
-
-    # A history of observations
-    self.observationHistory = []
-
-    # Time to spend each turn on computing maze distances
-    self.timeForComputing = timeForComputing
-
-    # Access to the graphics
-    self.display = None
-  
-  '''
-
-  def registerInitialState(self, gameState):
-    """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
-
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
-
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
-
-    '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
-    CaptureAgent.registerInitialState(self, gameState)
-
-    '''
-    Your initialization code goes here, if you need any.
-    '''
-
-
-  def chooseAction(self, gameState):
-    """
-    Picks among actions randomly.
-    """
-    actions = gameState.getLegalActions(self.index)
-
-    '''
-    You should change this in your own agent.
-    '''
-
-    return random.choice(actions)
-
-class firstAgent(CaptureAgent):
-
-  def registerInitialState(self, gameState):
-    #do we want to cache maze distances here?
-
-    pass
-  def chooseAction(self, gameState):
-
-    pass
 #LearningAgents.py
 
 from game import Directions, Agent, Actions
 
 import random,util,time
 
-class ValueEstimationAgent(CaptureAgent):
-    """
-      Abstract agent which assigns values to (state,action)
-      Q-Values for an environment. As well as a value to a
-      state and a policy given respectively by,
 
-      V(s) = max_{a in actions} Q(s,a)
-      policy(s) = arg_max_{a in actions} Q(s,a)
 
-      Both ValueIterationAgent and QLearningAgent inherit
-      from this agent. While a ValueIterationAgent has
-      a model of the environment via a MarkovDecisionProcess
-      (see mdp.py) that is used to estimate Q-Values before
-      ever actually acting, the QLearningAgent estimates
-      Q-Values while acting in the environment.
-    """
-
-    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, numTraining = 10):
-        """
-        Sets options, which can be passed in via the Pacman command line using -a alpha=0.5,...
-        alpha    - learning rate
-        epsilon  - exploration rate
-        gamma    - discount factor
-        numTraining - number of training episodes, i.e. no learning after these many episodes
-        """
-        self.alpha = float(alpha)
-        self.epsilon = float(epsilon)
-        self.discount = float(gamma)
-        self.numTraining = int(numTraining)
-
-    ####################################
-    #    Override These Functions      #
-    ####################################
-    def getQValue(self, state, action):
-        """
-        Should return Q(state,action)
-        """
-        util.raiseNotDefined()
-
-    def getValue(self, state):
-        """
-        What is the value of this state under the best action?
-        Concretely, this is given by
-
-        V(s) = max_{a in actions} Q(s,a)
-        """
-        util.raiseNotDefined()
-
-    def getPolicy(self, state):
-        """
-        What is the best action to take in the state. Note that because
-        we might want to explore, this might not coincide with getAction
-        Concretely, this is given by
-
-        policy(s) = arg_max_{a in actions} Q(s,a)
-
-        If many actions achieve the maximal Q-value,
-        it doesn't matter which is selected.
-        """
-        util.raiseNotDefined()
-
-    def getAction(self, state):
-        """
-        state: can call state.getLegalActions()
-        Choose an action and return it.
-        """
-        util.raiseNotDefined()
-
-class ReinforcementAgent(ValueEstimationAgent):
+class ReinforcementAgent(CaptureAgent):
     """
       Abstract Reinforcemnt Agent: A ValueEstimationAgent
             which estimates Q-Values (as well as policies) from experience
@@ -248,7 +91,8 @@ class ReinforcementAgent(ValueEstimationAgent):
           state. This is what you should use to
           obtain legal actions for a state
         """
-        return self.actionFn(state)
+        return state.getLegalActions()
+
 
     def observeTransition(self, state,action,nextState,deltaReward):
         """
@@ -308,6 +152,10 @@ class ReinforcementAgent(ValueEstimationAgent):
         self.epsilon = float(epsilon)
         self.alpha = float(alpha)
         self.discount = float(gamma)
+        self.alpha = float(alpha)
+        self.epsilon = float(epsilon)
+        self.discount = float(gamma)
+        self.numTraining = int(numTraining)
 
     ###################
     # Pacman Specific #
@@ -320,7 +168,6 @@ class ReinforcementAgent(ValueEstimationAgent):
         if not self.lastState is None:
             reward = state.getScore() - self.lastState.getScore()
             self.observeTransition(self.lastState, self.lastAction, state, reward)
-
         return state
 
     def registerInitialState(self, state):
@@ -392,7 +239,7 @@ from game import *
 from learningAgents import ReinforcementAgent
 from featureExtractors import *
 '''
-import random,util,math
+import random, util,math
 
 class QLearningAgent(ReinforcementAgent):
     """
@@ -464,6 +311,7 @@ class QLearningAgent(ReinforcementAgent):
         actions = self.getLegalActions(state)
         for a in actions:
           if self.getQValue(state, a) == bestScore:
+            print a in self.getLegalActions(state)
             return a
 
           
@@ -487,11 +335,16 @@ class QLearningAgent(ReinforcementAgent):
         action = None
         best = self.computeActionFromQValues(state)
         if not legalActions:
+          print "AH3"
           return None
         if util.flipCoin(self.epsilon):
+          print "AH2"
           return random.choice(legalActions)
         else:
+          print "AH1"
+          print best in self.getLegalActions(state)
           return best
+
 
 
     def update(self, state, action, nextState, reward):
@@ -519,3 +372,93 @@ class QLearningAgent(ReinforcementAgent):
 
     def getValue(self, state):
         return self.computeValueFromQValues(state)
+
+class PacmanQAgent(QLearningAgent):
+    "Exactly the same as QLearningAgent, but with different default parameters"
+
+    def __init__(self, epsilon=0.05,gamma=0.8,alpha=0.2, numTraining=0, **args):
+        """
+        These default parameters can be changed from the pacman.py command line.
+        For example, to change the exploration rate, try:
+            python pacman.py -p PacmanQLearningAgent -a epsilon=0.1
+
+        alpha    - learning rate
+        epsilon  - exploration rate
+        gamma    - discount factor
+        numTraining - number of training episodes, i.e. no learning after these many episodes
+        """
+        args['epsilon'] = epsilon
+        args['gamma'] = gamma
+        args['alpha'] = alpha
+        args['numTraining'] = numTraining
+        self.index = 0  # This is always Pacman
+        QLearningAgent.__init__(self, **args)
+
+    def getAction(self, state):
+        """
+        Simply calls the getAction method of QLearningAgent and then
+        informs parent of action for Pacman.  Do not change or remove this
+        method.
+        """
+        action = QLearningAgent.getAction(self,state)
+        #
+        #self.doAction(state,action
+        return action
+
+
+class ApproximateQAgent(PacmanQAgent):
+    """
+       ApproximateQLearningAgent
+
+       You should only have to overwrite getQValue
+       and update.  All other QLearningAgent functions
+       should work as is.
+    """
+    def __init__(self, extractor='IdentityExtractor', **args):
+        self.featExtractor = None
+        PacmanQAgent.__init__(self, **args)
+        self.weights = util.Counter()
+
+    def getWeights(self):
+        return self.weights
+
+    def getQValue(self, state, action):
+        """
+          Should return Q(state,action) = w * featureVector
+          where * is the dotProduct operator
+        """
+        "*** YOUR CODE HERE ***"
+        #change the line below this
+        features = util.Counter()
+
+        toRet = self.weights.__mul__(features)
+      
+        return toRet
+
+    def update(self, state, action, nextState, reward):
+        """
+           Should update your weights based on transition
+        """
+        "*** YOUR CODE HERE ***"
+        r = reward
+        Q_of_sa= self.getQValue(state,action)
+        weights = self.getWeights()
+        max = self.computeValueFromQValues(nextState)
+        difference = (r + self.discount * max) - Q_of_sa
+
+        #print type(state)
+        features = self.featExtractor.getFeatures(state, action)
+        for f in features:
+          weights[f] = weights[f] + (self.alpha * difference * features[f])
+        print self.weights
+
+    def final(self, state):
+        "Called at the end of each game."
+        # call the super-class final method
+        PacmanQAgent.final(self, state)
+
+        # did we finish training?
+        if self.episodesSoFar == self.numTraining:
+            # you might want to print your weights here for debugging
+            "*** YOUR CODE HERE ***"
+            pass
