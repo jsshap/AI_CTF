@@ -49,13 +49,13 @@ class MyAgent(CaptureAgent):
   A base class for reflex agents that chooses score-maximizing actions
   """
  
-  def __init__(self, index = 0, epsilon = .1, training = True, discount = .5, alpha = .2):
+  def __init__(self, index = 0, epsilon = .2, training = True, discount = .5, alpha = .2):
     self.index = index
     self.epsilon = epsilon
     self.training = training
     self.weights = util.Counter()
     
-    features = ['score', 'numFood', 'height', 'xPos']
+    features = ['score', 'numFood', 'height', 'xPos', 'nearestFood']
     for feat in features:
       self.weights[feat] = 1
     
@@ -63,6 +63,7 @@ class MyAgent(CaptureAgent):
     self.discount = discount
     self.alpha = alpha
     self.observationHistory = []
+    
 
 
   def readWeights(self):
@@ -79,9 +80,17 @@ class MyAgent(CaptureAgent):
     for w in self.weights:
       f.write(w + "," + str(self.weights[w])+"\n")
     f.close()
-
+  
   def registerInitialState(self, gameState):
+    #super(type(MyAgent)).registerInitialState(gameState)
+    self.red = gameState.isOnRedTeam(self.index)
+    import distanceCalculator
+    self.distancer = distanceCalculator.Distancer(gameState.data.layout)
+
+    # comment this out to forgo maze distance computation and use manhattan distances
+    self.distancer.getMazeDistances()
     self.readWeights()
+  
 
   def chooseAction(self, gameState):
     """
@@ -98,8 +107,9 @@ class MyAgent(CaptureAgent):
       toReturn = best
     if toReturn != None and self.training:
       self.updateWeights(gameState, toReturn)
-    print self.weights
-    print self.index
+    #print self.weights
+    #print self.index
+    #print toReturn, best
     return toReturn
 
   def computeActionFromQValues(self, state):
@@ -130,7 +140,7 @@ class MyAgent(CaptureAgent):
     Computes a linear combination of features and feature weights
     """
     #this should decide how much we like a state and update the weights to reflect that
-    return gameState.getScore()
+    return gameState.getScore() - self.getMazeDistance(gameState.getRedFood().asList()[0],gameState.getAgentPosition(self.index))
 
   def getFeatures(self, gameState, action):
     """
@@ -145,11 +155,16 @@ class MyAgent(CaptureAgent):
 
     #IMPORTANT: Need to generalize for both colors. Make it our food, their food
 
+    IAmBlue = not gameState.isOnRedTeam(self.index)
+
     features = util.Counter()
     features['score'] = gameState.getScore()
     features['numFood'] = len(gameState.getRedFood().asList())
     features['height'] = gameState.getAgentPosition(self.index)[1] 
     features['xPos'] = gameState.getAgentPosition(self.index)[0]
+    loc = gameState.getRedFood().asList()[0]
+    print loc, gameState.getAgentPosition(self.index)
+    features['nearestFood'] = self.getMazeDistance(loc, gameState.getAgentPosition(self.index))
 
     agentLocs = []
     for i in range (3): 
