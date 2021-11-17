@@ -54,9 +54,11 @@ class MyAgent(CaptureAgent):
     self.epsilon = epsilon
     self.training = training
     self.weights = util.Counter()
-    features = ['score', 'numFood']
+    
+    features = ['score', 'numFood', 'height', 'xPos']
     for feat in features:
       self.weights[feat] = 1
+    
 
     self.discount = discount
     self.alpha = alpha
@@ -127,6 +129,12 @@ class MyAgent(CaptureAgent):
     features = util.Counter()
     features['score'] = gameState.getScore()
     features['numFood'] = len(gameState.getRedFood().asList())
+    features['height'] = gameState.getAgentPosition(self.index)[1] 
+    features['xPos'] = gameState.getAgentPosition(self.index)[0]
+
+
+    
+
     return features
   
   def updateWeights(self, gameState, action):
