@@ -163,12 +163,32 @@ class MyAgent(CaptureAgent):
     features['height'] = gameState.getAgentPosition(self.index)[1] 
     features['xPos'] = gameState.getAgentPosition(self.index)[0]
     loc = gameState.getRedFood().asList()[0]
-    print loc, gameState.getAgentPosition(self.index)
+    #print loc, gameState.getAgentPosition(self.index)
     features['nearestFood'] = self.getMazeDistance(loc, gameState.getAgentPosition(self.index))
+
+
+    indecesOfMyTeam = []
+    indecesOfOtherTeam = []
+
+    for i in range(3):
+      if IAmBlue and isOnRedTeam(i):
+        indecesOfOtherTeam.append(i)
+      else:
+        indecesOfMyTeam.append(i)
+
+
+    distances = gameState.getAgentDistances()
+
+    #prob = gameState.getDistanceProb() #takes true, noisy
+
+
+    print distances, self.index
 
     agentLocs = []
     for i in range (3): 
       agentLocs.append(gameState.getAgentPosition(i))
+
+    print agentLocs
 
     blueIndeces = gameState.getBlueTeamIndices()
     redIndeces = gameState.getRedTeamIndices()
