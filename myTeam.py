@@ -63,23 +63,9 @@ class MyAgent(CaptureAgent):
     self.discount = discount
     self.alpha = alpha
     self.observationHistory = []
+    self.depthLimit = 10
     
 
-
-  def readWeights(self):
-    try:
-      f = open ('weights.txt', 'r')
-      lines = f.readLines()
-      for l in lines.split(","):
-        self.weights[l[0]] = float(l[1])
-    except:
-      pass
-
-  def writeWeights(self):
-    f = open("weights", "w")
-    for w in self.weights:
-      f.write(w + "," + str(self.weights[w])+"\n")
-    f.close()
   
   def registerInitialState(self, gameState):
     #super(type(MyAgent)).registerInitialState(gameState)
@@ -89,60 +75,126 @@ class MyAgent(CaptureAgent):
 
     # comment this out to forgo maze distance computation and use manhattan distances
     self.distancer.getMazeDistances()
-    self.readWeights()
-  
+    self.redIndeces = []
+    self.blueIndeces = []
 
+    for i in range(3):
+      if gameState.isOnRedTeam(i):
+        self.redIndeces.append(i)
+      else:
+        self.blueIndeces.append(i)
+  
+  '''
   def chooseAction(self, gameState):
     """
     Picks among the actions with the highest Q(s,a).
     """
 
     actions = gameState.getLegalActions(self.index)
-    best = self.computeActionFromQValues(gameState)
-    if not actions:
-      toReturn = None
-    if util.flipCoin(self.epsilon and self.training):
-      toReturn = random.choice(actions)
-    else:
-      toReturn = best
-    if toReturn != None and self.training:
-      self.updateWeights(gameState, toReturn)
-    #print self.weights
-    #print self.index
-    #print toReturn, best
     return toReturn
+    '''
 
-  def computeActionFromQValues(self, state):
-    bestScore = self.computeValueFromQValues(state)
-    if not state.getLegalActions(self.index):
-      return 0
-    actions = state.getLegalActions(self.index)
-    for a in actions:
-      if self.getQValue(state, a) == bestScore:
-        return a
-  def computeValueFromQValues(self, state):
-      actions = state.getLegalActions(self.index)
-      if not actions:
-        return 0.0
-      else:
-        options = []
-        for a in actions:
-          options.append(self.getQValue(state,a))
-        return max (options)
+  def min(gameState, index):
+    #min is the other team. In here, we'll need to reason over uncertainty
+    pass
 
-  def getQValue(self, state, actions):
-    features = self.getFeatures(state, actions)
-    return self.weights * features
+  def max(gameState, index):
+    #max is just our team. our eval function will need to be generic
+    pass
+
+  def chooseAction(self, gameState):
+      """
+        Returns the minimax action using self.depth and self.evaluationFunction
+      """
+      "*** YOUR CODE HERE ***"
+      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000, beta = 100000)
+      print toRet
+      return toRet
 
 
-  def evaluate(self, gameState, action):
-    """
-    Computes a linear combination of features and feature weights
-    """
-    #this should decide how much we like a state and update the weights to reflect that
-    return gameState.getScore() - self.getMazeDistance(gameState.getRedFood().asList()[0],gameState.getAgentPosition(self.index))
+  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -100000, beta = 100000):
+    return self.maxValue(gameState, agentIndex, depth, alpha, beta)[1]
 
-  def getFeatures(self, gameState, action):
+  def maxValue(self, gameState, agentIndex, depth, alpha, beta):
+    #print depth
+    if self.depthLimit <= depth:
+      toRet = (self.evaluationFunction(gameState,None), gameState.getLegalActions(agentIndex)[1])
+      print toRet
+      return toRet
+
+    bm = None
+    v = -10000000
+    for move in gameState.getLegalActions(agentIndex):
+        suc = gameState.generateSuccessor(agentIndex, move)
+
+        #ghost one always goes after pacman, so we hardcode one here
+        if self.index == 3:
+          nextIndex = 0
+        else:
+          nextIndex = self.index+1
+        score = self.minValue(suc, nextIndex , depth +1, alpha, beta)[0]
+
+        v = max(v, score)
+        if v > beta:
+          return (v, move)
+        if (v > alpha):
+          alpha = v
+          bm = move
+    print move
+
+
+    print bm
+    return (v, bm)
+
+
+  def minValue(self, gameState, agentIndex, depth, alpha, beta):
+    if self.depthLimit <= depth:
+      return (self.evaluationFunction(gameState,None),)
+
+    bm = None
+    v = 10000000
+
+    #print gameState.getLegalActions(agentIndex)
+    print agentIndex
+    #print gameState.getLegalActions(2)
+
+    agentLocs = []
+    for i in range (3): 
+      agentLocs.append(gameState.getAgentPosition(i))
+
+    locationOfThisGuy = agentLocs[agentIndex]
+    if locationOfThisGuy is None:
+      return(1,None)
+      noisyDist = gameState.getAgentDistances()[agentIndex]
+      probs = []
+      for i in range(noisyDist-6, noisyDist+6):
+        probs.append(gameState.getDistanceProb(i, noisyDist))
+      print probs
+
+
+    for move in gameState.getLegalActions(agentIndex):
+        suc = gameState.generateSuccessor(agentIndex, move)
+
+        if self.index == 3:
+          nextIndex = 0
+        else:
+          nextIndex = self.index+1
+
+        score = self.minValue(suc,  nextIndex ,depth + 1, alpha, beta)[0]
+
+        v = min(v, score)
+        if v < alpha:
+          print v, move
+          return (v, move)
+        if (v < beta):
+          beta = v
+          print v, move
+          bm = move
+
+    return (v, bm)
+
+
+  def evaluationFunction(self, gameState, action):
     """
     Returns a counter of features for the state
     """
@@ -162,7 +214,7 @@ class MyAgent(CaptureAgent):
     features['numFood'] = len(gameState.getRedFood().asList())
     features['height'] = gameState.getAgentPosition(self.index)[1] 
     features['xPos'] = gameState.getAgentPosition(self.index)[0]
-    loc = gameState.getRedFood().asList()[0]
+    loc = gameState.getBlueFood().asList()[0]
     #print loc, gameState.getAgentPosition(self.index)
     features['nearestFood'] = self.getMazeDistance(loc, gameState.getAgentPosition(self.index))
 
@@ -171,7 +223,7 @@ class MyAgent(CaptureAgent):
     indecesOfOtherTeam = []
 
     for i in range(3):
-      if IAmBlue and isOnRedTeam(i):
+      if IAmBlue and gameState.isOnRedTeam(i):
         indecesOfOtherTeam.append(i)
       else:
         indecesOfMyTeam.append(i)
@@ -182,43 +234,19 @@ class MyAgent(CaptureAgent):
     #prob = gameState.getDistanceProb() #takes true, noisy
 
 
-    print distances, self.index
+    #print distances, self.index
 
     agentLocs = []
     for i in range (3): 
       agentLocs.append(gameState.getAgentPosition(i))
 
-    print agentLocs
+    #print agentLocs
+    '''
+    self.blueIndeces = gameState.getBlueTeamIndices()
+    self.redIndeces = gameState.getRedTeamIndices()
 
-    blueIndeces = gameState.getBlueTeamIndices()
-    redIndeces = gameState.getRedTeamIndices()
-
-    return features
+    '''
+    eval = - gameState.getAgentPosition(self.index)[1] 
+    print eval
+    return eval
   
-  def updateWeights(self, gameState, action):
-
-    newState = gameState.generateSuccessor(self.index, action)
-    r= self.evaluate(newState, action)
-    Q_of_SA = self.getQValue(gameState, action)
-    weights = self.getWeights()
-    max = self.computeValueFromQValues(newState)
-
-    difference = (r+self.discount*max) - Q_of_SA
-
-    features = self.getFeatures(gameState, action)
-    for f in features:
-      weights[f] = weights[f] + (self.alpha * difference *features[f])
-
-
-
-    self.weights.normalize()
-
-
-
-  def getWeights(self):
-    """
-    Normally, weights do not depend on the gamestate.  They can be either
-    a counter or a dictionary.
-    """
-    return self.weights
-

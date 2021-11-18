@@ -970,7 +970,7 @@ def runGames( layouts, agents, display, length, numGames, record, numTraining, r
   for i in range( numGames ):
     beQuiet = i < numTraining
     layout = layouts[i]
-    if beQuiet:
+    if beQuiet:# or True:
         # Suppress output and graphics
         import textDisplay
         gameDisplay = textDisplay.NullGraphics()
