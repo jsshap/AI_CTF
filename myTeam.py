@@ -63,7 +63,7 @@ class MyAgent(CaptureAgent):
     self.discount = discount
     self.alpha = alpha
     self.observationHistory = []
-    self.depthLimit = 10
+    self.depthLimit = 5
     
 
   
@@ -108,70 +108,94 @@ class MyAgent(CaptureAgent):
       """
       "*** YOUR CODE HERE ***"
       toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000, beta = 100000)
-      print toRet
       return toRet
 
 
   def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -100000, beta = 100000):
-    return self.maxValue(gameState, agentIndex, depth, alpha, beta)[1]
+
+    
+    bestScore = None
+    bestAction = None
+    worstAction = None
+    worstScore = None
+    for a in gameState.getLegalActions(agentIndex):
+      suc = gameState.generateSuccessor(agentIndex, a)
+      max = self.maxValue(suc, agentIndex, depth, alpha, beta)
+      min = self.minValue(suc, agentIndex, depth, alpha, beta)
+      if bestScore is None or max > bestScore:
+        bestScore = max
+        bestAction = a
+      if worstScore is None or min < worstScore:
+        worstScore = min
+        worstAction = a
+
+    print bestAction, worstAction, bestScore, worstScore
+    return bestAction if agentIndex in self.blueIndeces else worstAction
 
   def maxValue(self, gameState, agentIndex, depth, alpha, beta):
     #print depth
     if self.depthLimit <= depth:
-      toRet = (self.evaluationFunction(gameState,None), gameState.getLegalActions(agentIndex)[1])
-      print toRet
+      toRet = (self.evaluationFunction(gameState))
+      print "HEREafsd", toRet
       return toRet
 
     bm = None
+    bestScore = None
     v = -10000000
-    for move in gameState.getLegalActions(agentIndex):
-        suc = gameState.generateSuccessor(agentIndex, move)
-
-        #ghost one always goes after pacman, so we hardcode one here
-        if self.index == 3:
-          nextIndex = 0
-        else:
-          nextIndex = self.index+1
-        score = self.minValue(suc, nextIndex , depth +1, alpha, beta)[0]
-
-        v = max(v, score)
-        if v > beta:
-          return (v, move)
-        if (v > alpha):
-          alpha = v
-          bm = move
-    print move
-
-
-    print bm
-    return (v, bm)
-
-
-  def minValue(self, gameState, agentIndex, depth, alpha, beta):
-    if self.depthLimit <= depth:
-      return (self.evaluationFunction(gameState,None),)
-
-    bm = None
-    v = 10000000
-
-    #print gameState.getLegalActions(agentIndex)
-    print agentIndex
-    #print gameState.getLegalActions(2)
 
     agentLocs = []
-    for i in range (3): 
+    for i in range (4): 
       agentLocs.append(gameState.getAgentPosition(i))
 
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
-      return(1,None)
+      import random
+      return (random.randint(1,15))
+    #print ("HJERER")
+
+
+
+    for move in gameState.getLegalActions(agentIndex):
+        suc = gameState.generateSuccessor(agentIndex, move)
+        
+        if self.index == 3:
+          nextIndex = 0
+        else:
+          nextIndex = self.index+1
+        score = self.minValue(suc, nextIndex , depth +1, alpha, beta)
+        v = max(v, score)
+        if v > beta:
+          return (v)
+        if (v > alpha):
+          alpha = v
+          bm = move
+          bestScore = v
+        #print v
+    #print v
+    return (v)
+
+
+  def minValue(self, gameState, agentIndex, depth, alpha, beta):
+    if self.depthLimit <= depth:
+      return (self.evaluationFunction(gameState))
+
+    bm = None
+    v = 10000000
+
+    agentLocs = []
+    for i in range (4): 
+      agentLocs.append(gameState.getAgentPosition(i))
+    #print agentLocs
+    locationOfThisGuy = agentLocs[agentIndex]
+    if locationOfThisGuy is None:
+      return(0)
       noisyDist = gameState.getAgentDistances()[agentIndex]
       probs = []
       for i in range(noisyDist-6, noisyDist+6):
         probs.append(gameState.getDistanceProb(i, noisyDist))
       print probs
 
-
+    #print v, "1"
     for move in gameState.getLegalActions(agentIndex):
         suc = gameState.generateSuccessor(agentIndex, move)
 
@@ -180,21 +204,24 @@ class MyAgent(CaptureAgent):
         else:
           nextIndex = self.index+1
 
-        score = self.minValue(suc,  nextIndex ,depth + 1, alpha, beta)[0]
-
+        score = self.maxValue(suc,  nextIndex ,depth + 1, alpha, beta)
+        # print score, "score"
+        # print v, "2"
         v = min(v, score)
+
+        # print ("HERE", v)
+        # print v, "2.5"
         if v < alpha:
-          print v, move
-          return (v, move)
+          return (v)
         if (v < beta):
           beta = v
-          print v, move
           bm = move
+        # print v, "3"
 
-    return (v, bm)
+    return (v)
 
 
-  def evaluationFunction(self, gameState, action):
+  def evaluationFunction(self, gameState):
     """
     Returns a counter of features for the state
     """
@@ -248,5 +275,5 @@ class MyAgent(CaptureAgent):
     '''
     eval = - gameState.getAgentPosition(self.index)[1] 
     print eval
-    return eval
+    return -55
   
