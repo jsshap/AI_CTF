@@ -63,7 +63,7 @@ class MyAgent(CaptureAgent):
     self.discount = discount
     self.alpha = alpha
     self.observationHistory = []
-    self.depthLimit = 5
+    self.depthLimit = 4
     
 
   
@@ -78,7 +78,7 @@ class MyAgent(CaptureAgent):
     self.redIndeces = []
     self.blueIndeces = []
 
-    for i in range(3):
+    for i in range(4):
       if gameState.isOnRedTeam(i):
         self.redIndeces.append(i)
       else:
@@ -94,13 +94,6 @@ class MyAgent(CaptureAgent):
     return toReturn
     '''
 
-  def min(gameState, index):
-    #min is the other team. In here, we'll need to reason over uncertainty
-    pass
-
-  def max(gameState, index):
-    #max is just our team. our eval function will need to be generic
-    pass
 
   def chooseAction(self, gameState):
       """
@@ -120,13 +113,16 @@ class MyAgent(CaptureAgent):
     worstScore = None
     for a in gameState.getLegalActions(agentIndex):
       suc = gameState.generateSuccessor(agentIndex, a)
-      max = self.maxValue(suc, agentIndex, depth, alpha, beta)
-      min = self.minValue(suc, agentIndex, depth, alpha, beta)
-      if bestScore is None or max > bestScore:
-        bestScore = max
+      if agentIndex in self.blueIndeces:
+        val = self.maxValue(suc, agentIndex, depth, alpha, beta)
+      else:
+        val = self.minValue(suc, agentIndex, depth, alpha, beta)
+      #min = self.minValue(suc, agentIndex, depth, alpha, beta)
+      if bestScore is None or val > bestScore:
+        bestScore = val
         bestAction = a
-      if worstScore is None or min < worstScore:
-        worstScore = min
+      if worstScore is None or val < worstScore:
+        worstScore = val
         worstAction = a
 
     print bestAction, worstAction, bestScore, worstScore
@@ -136,7 +132,6 @@ class MyAgent(CaptureAgent):
     #print depth
     if self.depthLimit <= depth:
       toRet = (self.evaluationFunction(gameState))
-      print "HEREafsd", toRet
       return toRet
 
     bm = None
@@ -150,7 +145,7 @@ class MyAgent(CaptureAgent):
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
       import random
-      return (random.randint(1,15))
+      return self.evaluationFunction(gameState)
     #print ("HJERER")
 
 
@@ -188,14 +183,10 @@ class MyAgent(CaptureAgent):
     #print agentLocs
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
-      return(0)
-      noisyDist = gameState.getAgentDistances()[agentIndex]
-      probs = []
-      for i in range(noisyDist-6, noisyDist+6):
-        probs.append(gameState.getDistanceProb(i, noisyDist))
-      print probs
-
+      import random
+      return self.evaluationFunction(gameState)
     #print v, "1"
+    #print agentLocs[agentIndex]
     for move in gameState.getLegalActions(agentIndex):
         suc = gameState.generateSuccessor(agentIndex, move)
 
@@ -205,6 +196,7 @@ class MyAgent(CaptureAgent):
           nextIndex = self.index+1
 
         score = self.maxValue(suc,  nextIndex ,depth + 1, alpha, beta)
+        print score, agentIndex
         # print score, "score"
         # print v, "2"
         v = min(v, score)
@@ -232,48 +224,27 @@ class MyAgent(CaptureAgent):
     #getFood()
 
 
-    #IMPORTANT: Need to generalize for both colors. Make it our food, their food
+    #IMPORTANT: BLUE IS POSITIVE
 
-    IAmBlue = not gameState.isOnRedTeam(self.index)
-
-    features = util.Counter()
-    features['score'] = gameState.getScore()
-    features['numFood'] = len(gameState.getRedFood().asList())
-    features['height'] = gameState.getAgentPosition(self.index)[1] 
-    features['xPos'] = gameState.getAgentPosition(self.index)[0]
-    loc = gameState.getBlueFood().asList()[0]
-    #print loc, gameState.getAgentPosition(self.index)
-    features['nearestFood'] = self.getMazeDistance(loc, gameState.getAgentPosition(self.index))
-
-
-    indecesOfMyTeam = []
-    indecesOfOtherTeam = []
-
-    for i in range(3):
-      if IAmBlue and gameState.isOnRedTeam(i):
-        indecesOfOtherTeam.append(i)
-      else:
-        indecesOfMyTeam.append(i)
-
-
-    distances = gameState.getAgentDistances()
-
-    #prob = gameState.getDistanceProb() #takes true, noisy
-
-
-    #print distances, self.index
+    redIndeces = self.redIndeces
+    blueIndeces = self.blueIndeces
 
     agentLocs = []
-    for i in range (3): 
+    for i in range (4): 
       agentLocs.append(gameState.getAgentPosition(i))
+    
+    knownTeamIsRed = gameState.isOnRedTeam(self.index)
 
-    #print agentLocs
-    '''
-    self.blueIndeces = gameState.getBlueTeamIndices()
-    self.redIndeces = gameState.getRedTeamIndices()
+    totalDistanceToNearestBlueFood = 0.0
+    food = gameState.getRedFood().asList()[0]
 
-    '''
-    eval = - gameState.getAgentPosition(self.index)[1] 
-    print eval
-    return -55
+    print blueIndeces
+    for i in blueIndeces:
+      #print (gameState.getAgentPosition(i)), "A", food
+      a = self.getMazeDistance(gameState.getAgentPosition(i), food)
+      #print a
+      totalDistanceToNearestBlueFood += a
+    
+    
+    return -1*totalDistanceToNearestBlueFood
   
