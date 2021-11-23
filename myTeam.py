@@ -63,7 +63,7 @@ class MyAgent(CaptureAgent):
     self.discount = discount
     self.alpha = alpha
     self.observationHistory = []
-    self.depthLimit = 4
+    self.depthLimit = 5
     
 
   
@@ -83,6 +83,10 @@ class MyAgent(CaptureAgent):
         self.redIndeces.append(i)
       else:
         self.blueIndeces.append(i)
+
+    import __main__
+    if '_display' in dir(__main__):
+      self.display = __main__._display
   
   '''
   def chooseAction(self, gameState):
@@ -125,7 +129,7 @@ class MyAgent(CaptureAgent):
         worstScore = val
         worstAction = a
 
-    print bestAction, worstAction, bestScore, worstScore
+    #print bestAction, worstAction, bestScore, worstScore
     return bestAction if agentIndex in self.blueIndeces else worstAction
 
   def maxValue(self, gameState, agentIndex, depth, alpha, beta):
@@ -136,7 +140,7 @@ class MyAgent(CaptureAgent):
 
     bm = None
     bestScore = None
-    v = -10000000
+    v = -1000000000
 
     agentLocs = []
     for i in range (4): 
@@ -175,7 +179,7 @@ class MyAgent(CaptureAgent):
       return (self.evaluationFunction(gameState))
 
     bm = None
-    v = 10000000
+    v = 100000000
 
     agentLocs = []
     for i in range (4): 
@@ -196,7 +200,7 @@ class MyAgent(CaptureAgent):
           nextIndex = self.index+1
 
         score = self.maxValue(suc,  nextIndex ,depth + 1, alpha, beta)
-        print score, agentIndex
+        #print score, agentIndex
         # print score, "score"
         # print v, "2"
         v = min(v, score)
@@ -226,25 +230,48 @@ class MyAgent(CaptureAgent):
 
     #IMPORTANT: BLUE IS POSITIVE
 
-    redIndeces = self.redIndeces
-    blueIndeces = self.blueIndeces
+    score = 0
 
-    agentLocs = []
-    for i in range (4): 
-      agentLocs.append(gameState.getAgentPosition(i))
-    
-    knownTeamIsRed = gameState.isOnRedTeam(self.index)
+    #having more blue food is good because that is what blue is defending
+    #this is + when blue has more food left, which is correct
+    pointDiff = len(gameState.getBlueFood().asList()) - len(gameState.getRedFood().asList())
 
-    totalDistanceToNearestBlueFood = 0.0
-    food = gameState.getRedFood().asList()[0]
+    score += pointDiff *100000
+    score -= gameState.getScore()*1000000
 
-    print blueIndeces
-    for i in blueIndeces:
-      #print (gameState.getAgentPosition(i)), "A", food
-      a = self.getMazeDistance(gameState.getAgentPosition(i), food)
-      #print a
-      totalDistanceToNearestBlueFood += a
+    #print gameState.getScore()
+
+    redFoods = gameState.getRedFood().asList()
+
+    ghostsWithKnownPosition = []
+    for i in range(4):
+      if gameState.getAgentPosition(i) is not None:
+        ghostsWithKnownPosition.append(i)
     
-    
-    return -1*totalDistanceToNearestBlueFood
+
+    #print self.blueIndeces, self.redIndeces, ghostsWithKnownPosition
+
+    distsToRedFoods = []
+    for i in self.blueIndeces:
+      if i in ghostsWithKnownPosition:
+        for f in redFoods:
+          toApp = self.getMazeDistance(gameState.getAgentPosition(i), f)
+          distsToRedFoods.append(toApp)
+
+    score -= sum(distsToRedFoods)*1000/(len(distsToRedFoods)+1)
+
+
+    blueFoods = gameState.getBlueFood().asList()
+    distsToBlueFoods = []
+    for i in self.redIndeces:
+      if i in ghostsWithKnownPosition:
+        for f in blueFoods:
+          toApp = (self.getMazeDistance(gameState.getAgentPosition(i), f))
+          distsToBlueFoods.append(toApp)
+
+    score += sum (distsToBlueFoods)/(len(distsToBlueFoods)+1)
+
+
+    #print score
+    return score #* (random.randint(5,10))
   
