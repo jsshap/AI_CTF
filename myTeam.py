@@ -63,7 +63,7 @@ class MyAgent(CaptureAgent):
     self.discount = discount
     self.alpha = alpha
     self.observationHistory = []
-    self.depthLimit = 5
+    self.depthLimit = 4
     
 
   
@@ -84,9 +84,8 @@ class MyAgent(CaptureAgent):
       else:
         self.blueIndeces.append(i)
 
-    import __main__
-    if '_display' in dir(__main__):
-      self.display = __main__._display
+    self.origNumRedFood = len(gameState.getRedFood().asList())
+    self.origNumBlueFood = len(gameState.getBlueFood().asList())
   
   '''
   def chooseAction(self, gameState):
@@ -135,7 +134,7 @@ class MyAgent(CaptureAgent):
   def maxValue(self, gameState, agentIndex, depth, alpha, beta):
     #print depth
     if self.depthLimit <= depth:
-      toRet = (self.evaluationFunction(gameState))
+      toRet = (self.evaluationFunction(gameState, agentIndex))
       return toRet
 
     bm = None
@@ -149,7 +148,7 @@ class MyAgent(CaptureAgent):
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
       import random
-      return self.evaluationFunction(gameState)
+      return self.evaluationFunction(gameState, agentIndex)
     #print ("HJERER")
 
 
@@ -176,7 +175,7 @@ class MyAgent(CaptureAgent):
 
   def minValue(self, gameState, agentIndex, depth, alpha, beta):
     if self.depthLimit <= depth:
-      return (self.evaluationFunction(gameState))
+      return (self.evaluationFunction(gameState, agentIndex))
 
     bm = None
     v = 100000000
@@ -188,7 +187,7 @@ class MyAgent(CaptureAgent):
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
       import random
-      return self.evaluationFunction(gameState)
+      return self.evaluationFunction(gameState, agentIndex)
     #print v, "1"
     #print agentLocs[agentIndex]
     for move in gameState.getLegalActions(agentIndex):
@@ -217,31 +216,37 @@ class MyAgent(CaptureAgent):
     return (v)
 
 
-  def evaluationFunction(self, gameState):
+  def evaluationFunction(self, gameState, index):
     """
     Returns a counter of features for the state
     """
-    #pacman position
-    #getScore()
-    #getCapsules returns list of positions
-    #getNumFood()
-    #getFood()
+    # #pacman position
+    # #getScore()
+    # #getCapsules returns list of positions
+    # #getNumFood()
+    # #getFood()
 
 
-    #IMPORTANT: BLUE IS POSITIVE
+
+    redFoodEaten = self.origNumRedFood - len(gameState.getRedFood().asList())
+    blueFoodEaten = self.origNumBlueFood - len(gameState.getBlueFood().asList())
+
+    # # #IMPORTANT: BLUE IS POSITIVE
 
     score = 0
 
-    #having more blue food is good because that is what blue is defending
-    #this is + when blue has more food left, which is correct
+    score += (redFoodEaten*1000 + blueFoodEaten*(-1000))
+
+    # # #having more blue food is good because that is what blue is defending
+    # # #this is + when blue has more food left, which is correct
     pointDiff = len(gameState.getBlueFood().asList()) - len(gameState.getRedFood().asList())
 
-    score += pointDiff *100000
-    score -= gameState.getScore()*1000000
+    # # score += pointDiff *10
+    # # #score -= gameState.getScore()*1000000
 
-    #print gameState.getScore()
+    # # #print gameState.getScore()
 
-    redFoods = gameState.getRedFood().asList()
+    # redFoods = gameState.getRedFood().asList()
 
     ghostsWithKnownPosition = []
     for i in range(4):
@@ -249,29 +254,61 @@ class MyAgent(CaptureAgent):
         ghostsWithKnownPosition.append(i)
     
 
-    #print self.blueIndeces, self.redIndeces, ghostsWithKnownPosition
+    # # #print self.blueIndeces, self.redIndeces, ghostsWithKnownPosition
 
-    distsToRedFoods = []
-    for i in self.blueIndeces:
-      if i in ghostsWithKnownPosition:
-        for f in redFoods:
-          toApp = self.getMazeDistance(gameState.getAgentPosition(i), f)
-          distsToRedFoods.append(toApp)
+    # distsToRedFoods = []
+    # for i in self.blueIndeces:
+    #   if i in ghostsWithKnownPosition:
+    #     for f in redFoods:
+    #       toApp = self.getMazeDistance(gameState.getAgentPosition(i), f)
+    #       distsToRedFoods.append(toApp)
+    # #print distsToRedFoods
 
-    score -= sum(distsToRedFoods)*1000/(len(distsToRedFoods)+1)
-
-
-    blueFoods = gameState.getBlueFood().asList()
-    distsToBlueFoods = []
-    for i in self.redIndeces:
-      if i in ghostsWithKnownPosition:
-        for f in blueFoods:
-          toApp = (self.getMazeDistance(gameState.getAgentPosition(i), f))
-          distsToBlueFoods.append(toApp)
-
-    score += sum (distsToBlueFoods)/(len(distsToBlueFoods)+1)
+    # # #score -= sum(distsToRedFoods)*1000/(len(distsToRedFoods)+1)
 
 
-    #print score
+    # blueFoods = gameState.getBlueFood().asList()
+    # distsToBlueFoods = []
+    # for i in self.redIndeces:
+    #   if i in ghostsWithKnownPosition:
+    #     for f in blueFoods:
+    #       toApp = (self.getMazeDistance(gameState.getAgentPosition(i), f))
+    #       distsToBlueFoods.append(toApp)
+
+    # # score += sum (distsToBlueFoods)/(len(distsToBlueFoods)+1)
+
+    # (distsToRedFoods).append(10000)
+    # distsToBlueFoods.append(100000)
+
+    # score += 1/min(distsToBlueFoods) 
+    # score -= 1/min(distsToRedFoods)
+    # 
+    #score = 0
+    # thisAgentLocation = gameState.getAgentPosition(index-1)
+    # if thisAgentLocation is not None:
+    #   distsToNearestFood = [self.getMazeDistance(thisAgentLocation, f) for f in gameState.getRedFood().asList()]
+    #   distsToNearestFood.append(10000)
+    #   score += 1.0/(min(distsToNearestFood)+1)
+
+
+    distsToRedFoodsFromKnownAgents = []
+    for a in ghostsWithKnownPosition:
+      for f in gameState.getRedFood().asList():
+        dist = self.getMazeDistance(gameState.getAgentPosition(a), f)
+        distsToRedFoodsFromKnownAgents.append(dist)
+    distsToRedFoodsFromKnownAgents.append(10000)
+    
+    score += 1.0/(min(distsToRedFoodsFromKnownAgents)+1)
+      
+
+
+    score += pointDiff*100
+
+
+    if not gameState.getRedFood().asList():
+      return 10000000
+    # #print score
+    # #print score
+    print score, index, self.index
     return score #* (random.randint(5,10))
   
