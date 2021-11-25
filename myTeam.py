@@ -55,7 +55,7 @@ class MyAgent(CaptureAgent):
     self.training = training
     self.weights = util.Counter()
     
-    features = ['score', 'numFood', 'height', 'xPos', 'nearestFood']
+    features = ['FoodToEat', 'FoodLeft']
     for feat in features:
       self.weights[feat] = 1
     
@@ -76,7 +76,7 @@ class MyAgent(CaptureAgent):
       pass
 
   def writeWeights(self):
-    f = open("weights", "w")
+    f = open("weights", "a")
     for w in self.weights:
       f.write(w + "," + str(self.weights[w])+"\n")
     f.close()
@@ -107,7 +107,7 @@ class MyAgent(CaptureAgent):
       toReturn = best
     if toReturn != None and self.training:
       self.updateWeights(gameState, toReturn)
-    #print self.weights
+    print self.weights
     #print self.index
     #print toReturn, best
     return toReturn
@@ -140,7 +140,8 @@ class MyAgent(CaptureAgent):
     Computes a linear combination of features and feature weights
     """
     #this should decide how much we like a state and update the weights to reflect that
-    return gameState.getScore() - self.getMazeDistance(gameState.getRedFood().asList()[0],gameState.getAgentPosition(self.index))
+    
+    return len(self.foodIWantToEat)-len(self.foodIwantToDefend)
 
   def getFeatures(self, gameState, action):
     """
@@ -158,40 +159,31 @@ class MyAgent(CaptureAgent):
     IAmBlue = not gameState.isOnRedTeam(self.index)
 
     features = util.Counter()
-    features['score'] = gameState.getScore()
-    features['numFood'] = len(gameState.getRedFood().asList())
-    features['height'] = gameState.getAgentPosition(self.index)[1] 
-    features['xPos'] = gameState.getAgentPosition(self.index)[0]
-    loc = gameState.getRedFood().asList()[0]
-    #print loc, gameState.getAgentPosition(self.index)
-    features['nearestFood'] = self.getMazeDistance(loc, gameState.getAgentPosition(self.index))
-
-
     indecesOfMyTeam = []
     indecesOfOtherTeam = []
-
     for i in range(3):
-      if IAmBlue and isOnRedTeam(i):
+      if IAmBlue and gameState.isOnRedTeam(i):
         indecesOfOtherTeam.append(i)
       else:
         indecesOfMyTeam.append(i)
 
+    self.foodIwantToEat = []
+    self.foodIwantToDefend = []
+    if IAmBlue:
+      self.foodIWantToEat = gameState.getRedFood().asList()
+      self.foodIWantToDefend = gameState.getBlueFood().asList()
+    else:
+      self.foodIWantToEat = gameState.geBlueFood().asList()
+      self.foodIWantToDefend = gameState.getRedFood().asList()
 
-    distances = gameState.getAgentDistances()
-
-    #prob = gameState.getDistanceProb() #takes true, noisy
+    
 
 
-    print distances, self.index
+    distToClosestFood = min([self.distancer.getMazeDistance(gameState.getAgentPosition(self.index), f) for f in self.foodIwantToEat]+[1000])
 
-    agentLocs = []
-    for i in range (3): 
-      agentLocs.append(gameState.getAgentPosition(i))
 
-    print agentLocs
-
-    blueIndeces = gameState.getBlueTeamIndices()
-    redIndeces = gameState.getRedTeamIndices()
+    features['FoodToEat'] = distToClosestFood
+    features['FoodLeft'] = len(self.foodIwantToEat)
 
     return features
   
