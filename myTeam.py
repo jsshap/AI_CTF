@@ -118,8 +118,11 @@ class MyAgent(CaptureAgent):
       suc = gameState.generateSuccessor(agentIndex, a)
       if agentIndex in self.blueIndeces:
         val = self.maxValue(suc, agentIndex, depth, alpha, beta)
+        if a == "Stop" and len( self.getFood(gameState).asList()) == 1: val -= 10
       else:
+        
         val = self.minValue(suc, agentIndex, depth, alpha, beta)
+        if a == "Stop" and len (self.getFood(gameState).asList()) == 1: val += 10
       #min = self.minValue(suc, agentIndex, depth, alpha, beta)
       if bestScore is None or val > bestScore:
         bestScore = val
@@ -161,6 +164,8 @@ class MyAgent(CaptureAgent):
         else:
           nextIndex = self.index+1
         score = self.minValue(suc, nextIndex , depth +1, alpha, beta)
+        # if move == "Stop":
+        #   score -= 10000
         v = max(v, score)
         if v > beta:
           return (v)
@@ -202,6 +207,8 @@ class MyAgent(CaptureAgent):
         #print score, agentIndex
         # print score, "score"
         # print v, "2"
+        # if move == "Stop":
+        #   score += 10000
         v = min(v, score)
 
         # print ("HERE", v)
@@ -220,95 +227,21 @@ class MyAgent(CaptureAgent):
     """
     Returns a counter of features for the state
     """
-    # #pacman position
-    # #getScore()
-    # #getCapsules returns list of positions
-    # #getNumFood()
-    # #getFood()
 
 
+    myFood = self.getFood(gameState).asList()
+    myPos = gameState.getAgentState(self.index).getPosition()
+    minDistance = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
+    toRet = -1*minDistance + len(myFood) * -1000
+    #print myFood, gameState.isOnRedTeam(self.index)
+    #print toRet, gameState.isOnRedTeam(self.index)
 
-    redFoodEaten = self.origNumRedFood - len(gameState.getRedFood().asList())
-    blueFoodEaten = self.origNumBlueFood - len(gameState.getBlueFood().asList())
-
-    # # #IMPORTANT: BLUE IS POSITIVE
-
-    score = 0
-
-    score += (redFoodEaten*1000 + blueFoodEaten*(-1000))
-
-    # # #having more blue food is good because that is what blue is defending
-    # # #this is + when blue has more food left, which is correct
-    pointDiff = len(gameState.getBlueFood().asList()) - len(gameState.getRedFood().asList())
-
-    # # score += pointDiff *10
-    # # #score -= gameState.getScore()*1000000
-
-    # # #print gameState.getScore()
-
-    # redFoods = gameState.getRedFood().asList()
-
-    ghostsWithKnownPosition = []
-    for i in range(4):
-      if gameState.getAgentPosition(i) is not None:
-        ghostsWithKnownPosition.append(i)
+    distancesToGhosts = []
     
-
-    # # #print self.blueIndeces, self.redIndeces, ghostsWithKnownPosition
-
-    # distsToRedFoods = []
-    # for i in self.blueIndeces:
-    #   if i in ghostsWithKnownPosition:
-    #     for f in redFoods:
-    #       toApp = self.getMazeDistance(gameState.getAgentPosition(i), f)
-    #       distsToRedFoods.append(toApp)
-    # #print distsToRedFoods
-
-    # # #score -= sum(distsToRedFoods)*1000/(len(distsToRedFoods)+1)
-
-
-    # blueFoods = gameState.getBlueFood().asList()
-    # distsToBlueFoods = []
-    # for i in self.redIndeces:
-    #   if i in ghostsWithKnownPosition:
-    #     for f in blueFoods:
-    #       toApp = (self.getMazeDistance(gameState.getAgentPosition(i), f))
-    #       distsToBlueFoods.append(toApp)
-
-    # # score += sum (distsToBlueFoods)/(len(distsToBlueFoods)+1)
-
-    # (distsToRedFoods).append(10000)
-    # distsToBlueFoods.append(100000)
-
-    # score += 1/min(distsToBlueFoods) 
-    # score -= 1/min(distsToRedFoods)
-    # 
-    #score = 0
-    # thisAgentLocation = gameState.getAgentPosition(index-1)
-    # if thisAgentLocation is not None:
-    #   distsToNearestFood = [self.getMazeDistance(thisAgentLocation, f) for f in gameState.getRedFood().asList()]
-    #   distsToNearestFood.append(10000)
-    #   score += 1.0/(min(distsToNearestFood)+1)
-
-
-    distsToRedFoodsFromKnownAgents = []
-    for a in ghostsWithKnownPosition:
-      for f in gameState.getRedFood().asList():
-        dist = self.getMazeDistance(gameState.getAgentPosition(a), f)
-        distsToRedFoodsFromKnownAgents.append(dist)
-    distsToRedFoodsFromKnownAgents.append(10000)
     
-    score += 1.0/(min(distsToRedFoodsFromKnownAgents)+1)
-      
-
-
-    score += pointDiff*100
-
-
-    if not gameState.getRedFood().asList():
-      return 10000000
-    # #print score
-    # #print score
-    print score, index, self.index
-    return score #* (random.randint(5,10))
+    if len(myFood) == 0:
+      toRet = 1000000
+    if gameState.isOnRedTeam(self.index):
+      toRet *= -1
+    return toRet
   
