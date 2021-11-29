@@ -55,7 +55,7 @@ class MyAgent(CaptureAgent):
     self.training = training
     self.weights = util.Counter()
     
-    features = ['FoodToEat', 'FoodLeft']
+    features = ['FoodLeft', 'FoodToEat']
     for feat in features:
       self.weights[feat] = 1
     
@@ -74,12 +74,14 @@ class MyAgent(CaptureAgent):
         self.weights[l[0]] = float(l[1])
     except:
       pass
+    print self.weights, "START"
 
   def writeWeights(self):
-    f = open("weights", "a")
+    f = open("weights", "w")
     for w in self.weights:
       f.write(w + "," + str(self.weights[w])+"\n")
     f.close()
+    print self.weights
   
   def registerInitialState(self, gameState):
     #super(type(MyAgent)).registerInitialState(gameState)
@@ -107,7 +109,7 @@ class MyAgent(CaptureAgent):
       toReturn = best
     if toReturn != None and self.training:
       self.updateWeights(gameState, toReturn)
-    print self.weights
+    #print self.weights
     #print self.index
     #print toReturn, best
     return toReturn
@@ -140,8 +142,8 @@ class MyAgent(CaptureAgent):
     Computes a linear combination of features and feature weights
     """
     #this should decide how much we like a state and update the weights to reflect that
-    
-    return len(self.foodIWantToEat)-len(self.foodIwantToDefend)
+    #return 1
+    return len(self.foodIWantToEat)
 
   def getFeatures(self, gameState, action):
     """
@@ -181,9 +183,11 @@ class MyAgent(CaptureAgent):
 
     distToClosestFood = min([self.distancer.getMazeDistance(gameState.getAgentPosition(self.index), f) for f in self.foodIwantToEat]+[1000])
 
-
-    features['FoodToEat'] = distToClosestFood
-    features['FoodLeft'] = len(self.foodIwantToEat)
+    #print self.foodIWantToEat
+    #features['FoodToEat'] = distToClosestFood
+    a = len(self.foodIWantToEat)
+    features['FoodLeft'] = a
+    
 
     return features
   
@@ -192,16 +196,20 @@ class MyAgent(CaptureAgent):
     newState = gameState.generateSuccessor(self.index, action)
     r= self.evaluate(newState, action)
     Q_of_SA = self.getQValue(gameState, action)
-    weights = self.getWeights()
+    weights = self.getWeights().copy()
     max = self.computeValueFromQValues(newState)
 
     difference = (r+self.discount*max) - Q_of_SA
 
+
     features = self.getFeatures(gameState, action)
+    #print r, "reward"
+    OldWeights= self.weights.copy()
     for f in features:
-      weights[f] = weights[f] + (self.alpha * difference *features[f])
-
-
+      #print f, weights[f], features[f]
+      newVal = weights[f] + (self.alpha * difference *features[f])
+      #print newVal, weights[f], f
+      self.weights[f] = newVal
 
     self.weights.normalize()
 
