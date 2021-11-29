@@ -49,15 +49,16 @@ class MyAgent(CaptureAgent):
   A base class for reflex agents that chooses score-maximizing actions
   """
  
-  def __init__(self, index = 0, epsilon = .2, training = True, discount = .5, alpha = .2):
+  def __init__(self, index = 0, epsilon = .2, training = True, discount = .25, alpha = .2):
     self.index = index
     self.epsilon = epsilon
     self.training = training
     self.weights = util.Counter()
     
-    features = ['FoodLeft', 'FoodToEat']
-    for feat in features:
-      self.weights[feat] = 1
+    features = ['FoodLeft', 'FoodToEat', 'xLoc']
+    for f in features:
+      self.weights[f] = 1
+    self.readWeights()
     
 
     self.discount = discount
@@ -111,7 +112,8 @@ class MyAgent(CaptureAgent):
       self.updateWeights(gameState, toReturn)
     #print self.weights
     #print self.index
-    #print toReturn, best
+    # print toReturn, best, self.computeValueFromQValues(gameState), self.getQValue(gameState, best)
+    # print gameState.generateSuccessor(self.index, best).getAgentPosition(self.index)
     return toReturn
 
   def computeActionFromQValues(self, state):
@@ -143,7 +145,13 @@ class MyAgent(CaptureAgent):
     """
     #this should decide how much we like a state and update the weights to reflect that
     #return 1
-    return len(self.foodIWantToEat)
+
+    closestFood = min([self.getMazeDistance(gameState.getAgentPosition(self.index), f) for f in self.foodIWantToEat]+[1000])
+    foodDists = []#[self.distancer.getMazeDistance(gameState.getAgentPosition(self.index), f) for f in self.foodIWantToEat]+[1000]
+    # for f in self.foodIWantToEat:
+    #   foodDists.append(self.distancer.getMazeDistance(gameState.getAgentPosition(self.index), f))
+    #print min(foodDists)
+    return gameState.getAgentPosition(self.index)[0]#-1*len(self.foodIWantToEat) - closestFood
 
   def getFeatures(self, gameState, action):
     """
@@ -169,7 +177,7 @@ class MyAgent(CaptureAgent):
       else:
         indecesOfMyTeam.append(i)
 
-    self.foodIwantToEat = []
+    self.foodIWantToEat = []
     self.foodIwantToDefend = []
     if IAmBlue:
       self.foodIWantToEat = gameState.getRedFood().asList()
@@ -180,13 +188,15 @@ class MyAgent(CaptureAgent):
 
     
 
-
-    distToClosestFood = min([self.distancer.getMazeDistance(gameState.getAgentPosition(self.index), f) for f in self.foodIwantToEat]+[1000])
+    distToClosestFood = min([self.getMazeDistance(gameState.getAgentPosition(self.index), f) for f in self.foodIWantToEat]+[1000])
 
     #print self.foodIWantToEat
-    #features['FoodToEat'] = distToClosestFood
+    features['FoodToEat'] = distToClosestFood
     a = len(self.foodIWantToEat)
     features['FoodLeft'] = a
+
+    features['xLoc'] = gameState.getAgentPosition(self.index)[0]
+    
     
 
     return features
@@ -206,7 +216,7 @@ class MyAgent(CaptureAgent):
     #print r, "reward"
     OldWeights= self.weights.copy()
     for f in features:
-      #print f, weights[f], features[f]
+      print f, weights[f], features[f]
       newVal = weights[f] + (self.alpha * difference *features[f])
       #print newVal, weights[f], f
       self.weights[f] = newVal
