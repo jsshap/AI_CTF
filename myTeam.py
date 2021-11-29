@@ -39,8 +39,8 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
   # The following line is an example only; feel free to change it.
-  a = MyAgent(index = firstIndex)
-  b = MyAgent( index = secondIndex)
+  a = OffensiveAgent(index = firstIndex)
+  b = DefensiveAgent( index = secondIndex)
   return [a, b]
 
 
@@ -51,19 +51,10 @@ class MyAgent(CaptureAgent):
  
   def __init__(self, index = 0, epsilon = .2, training = True, discount = .5, alpha = .2):
     self.index = index
-    self.epsilon = epsilon
-    self.training = training
-    self.weights = util.Counter()
-    
-    features = ['score', 'numFood', 'height', 'xPos', 'nearestFood']
-    for feat in features:
-      self.weights[feat] = 1
     
 
-    self.discount = discount
-    self.alpha = alpha
     self.observationHistory = []
-    self.depthLimit = 4
+    self.depthLimit = 6
     
 
   
@@ -118,11 +109,11 @@ class MyAgent(CaptureAgent):
       suc = gameState.generateSuccessor(agentIndex, a)
       if agentIndex in self.blueIndeces:
         val = self.maxValue(suc, agentIndex, depth, alpha, beta)
-        if a == "Stop" and len( self.getFood(gameState).asList()) == 1: val -= 10
+        if a == "Stop" and len( self.getFood(gameState).asList()) <= 2: val -= 10
       else:
         
         val = self.minValue(suc, agentIndex, depth, alpha, beta)
-        if a == "Stop" and len (self.getFood(gameState).asList()) == 1: val += 10
+        if a == "Stop" and len (self.getFood(gameState).asList()) <= 2: val += 10
       #min = self.minValue(suc, agentIndex, depth, alpha, beta)
       if bestScore is None or val > bestScore:
         bestScore = val
@@ -223,25 +214,123 @@ class MyAgent(CaptureAgent):
     return (v)
 
 
+  def eval(self, features):
+    return features * self.getWeights()
+
+class OffensiveAgent(MyAgent):
   def evaluationFunction(self, gameState, index):
     """
     Returns a counter of features for the state
     """
-
+    toRet = 0
+    features = util.Counter()
 
     myFood = self.getFood(gameState).asList()
     myPos = gameState.getAgentState(self.index).getPosition()
     minDistance = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
-    toRet = -1*minDistance + len(myFood) * -1000
-    #print myFood, gameState.isOnRedTeam(self.index)
-    #print toRet, gameState.isOnRedTeam(self.index)
+
+
+    features["closestFood"] = (minDistance)
+    features["amountOfFoodToEat"] = len(myFood)
 
     distancesToGhosts = []
+
+    enemies = self.getOpponents(gameState)
+
+    for e in enemies:
+      distancesToGhosts.append (gameState.getAgentPosition(e))
     
+    dist = 0
+    for d in distancesToGhosts:
+      if d is not None:
+        toAdd = self.getMazeDistance(gameState.getAgentPosition(self.index), d)
+        dist += toAdd
+
     
-    if len(myFood) == 0:
-      toRet = 1000000
+
+    enemies = self.getOpponents(gameState)
+    dist = None
+    myPos = gameState.getAgentPosition(self.index)
+    for e in enemies:
+      if gameState.getAgentPosition(e) is not None:
+        #FIX TJHIS
+        if not gameState.getAgentState(e).isPacman and gameState.getAgentState(self.index).isPacman:
+          #myPos = gameState.getAgentPosition(self.index)
+          otherPos = gameState.getAgentPosition(e)
+          dist = self.getMazeDistance(myPos, otherPos)
+
+
+    if not dist is None and dist <2:
+      features["distToThem"] =1
+    else:
+      features['distToThem'] = 0
+    #features["distanceToGhosts"] = dist
+
+    toRet = self.eval(features)
     if gameState.isOnRedTeam(self.index):
       toRet *= -1
+
+    
     return toRet
-  
+
+
+
+  def getWeights(self):
+    return {"distToThem":1, "closestFood":-1, "amountOfFoodToEat" : -10000}
+    
+class DefensiveAgent(MyAgent):
+  def evaluationFunction(self, gameState, index):
+    features = util.Counter()
+
+    enemies = self.getOpponents(gameState)
+    dist = 0
+    myPos = gameState.getAgentPosition(self.index)
+    for e in enemies:
+      if gameState.getAgentPosition(e) is not None:
+
+
+        #FIX TJHIS
+        if gameState.getAgentState(e).isPacman:
+          #myPos = gameState.getAgentPosition(self.index)
+          otherPos = gameState.getAgentPosition(e)
+          dist = self.getMazeDistance(myPos, otherPos)
+    
+
+    
+    features["distToThem"] = dist
+    
+    averageXOfMyFood = 0
+    averageYOfMyFood = 0
+
+    foodImDefending = self.getFoodYouAreDefending(gameState).asList()
+
+    #print foodImDefending
+    for f in foodImDefending:
+      averageXOfMyFood += f[0]
+      averageYOfMyFood += f[1]
+    
+    closest = None
+    closestDist = None
+    avgFood = (averageXOfMyFood/len(foodImDefending), averageYOfMyFood/len(foodImDefending))
+    for f in foodImDefending:
+      d = util.manhattanDistance(f, avgFood)
+      if closest is None or d< closestDist:
+        closest = f
+        closestDist = d
+    
+
+    #FIX THIS
+    
+    distFromAvgLocationOfFood = self.getMazeDistance(myPos, closest)
+
+    features['distanceToMyFood'] = distFromAvgLocationOfFood
+
+    toRet = self.eval(features)
+    if gameState.isOnRedTeam(self.index):
+      toRet *= -1
+    
+    return toRet
+
+  def getWeights(self):
+    weights = {"distToThem": -50, "distanceToMyFood": -5}
+    return weights
