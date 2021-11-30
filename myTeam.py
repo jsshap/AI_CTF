@@ -54,7 +54,7 @@ class MyAgent(CaptureAgent):
     
 
     self.observationHistory = []
-    self.depthLimit = 6
+    self.depthLimit = 4
     
 
   
@@ -69,6 +69,8 @@ class MyAgent(CaptureAgent):
     self.redIndeces = []
     self.blueIndeces = []
 
+    self.initialLocation = gameState.getAgentPosition(self.index)
+
     for i in range(4):
       if gameState.isOnRedTeam(i):
         self.redIndeces.append(i)
@@ -77,6 +79,11 @@ class MyAgent(CaptureAgent):
 
     self.origNumRedFood = len(gameState.getRedFood().asList())
     self.origNumBlueFood = len(gameState.getBlueFood().asList())
+
+    myTeam = self.getTeam(gameState)
+    for i in myTeam:
+      if not i == self.index:
+        self.partnerIndex = i
   
   '''
   def chooseAction(self, gameState):
@@ -230,8 +237,8 @@ class OffensiveAgent(MyAgent):
     minDistance = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
 
 
-    features["closestFood"] = (minDistance)
-    features["amountOfFoodToEat"] = len(myFood)
+    features["closestFood"] = 1.0/(minDistance+1)
+    features["amountOfFoodToEat"] = 1.0/(len(myFood)+1)
 
     distancesToGhosts = []
 
@@ -260,23 +267,37 @@ class OffensiveAgent(MyAgent):
           dist = self.getMazeDistance(myPos, otherPos)
 
 
-    if not dist is None and dist <2:
-      features["distToThem"] =1
+    if not dist is None and dist <4:
+      features["tooClose"] =1.0
     else:
-      features['distToThem'] = 0
+      features['tooClose'] = 0
     #features["distanceToGhosts"] = dist
 
     toRet = self.eval(features)
     if gameState.isOnRedTeam(self.index):
       toRet *= -1
-
     
+    #print toRet
+
+    #TODO
+    #determine when PACMAN shoudl return to his side.
+    #either if carrying a lot of food or being chased
+    #give him a spot to go back to
+    #
+   
     return toRet
 
 
 
   def getWeights(self):
-    return {"distToThem":1, "closestFood":-1, "amountOfFoodToEat" : -10000}
+    return {"tooClose":-10000000000, "closestFood":50, "amountOfFoodToEat" : 60000}
+  
+  #TODO write different weight functions depending on what we're trying to do
+  def getReturnWeights(self):
+    pass
+
+  def getEatWeights(self):
+    {"closestFood":50, "amountOfFoodToEat" : 60000}
     
 class DefensiveAgent(MyAgent):
   def evaluationFunction(self, gameState, index):
