@@ -54,7 +54,7 @@ class MyAgent(CaptureAgent):
     
 
     self.observationHistory = []
-    self.depthLimit = 5
+    self.depthLimit = 0
     
 
   
@@ -77,8 +77,10 @@ class MyAgent(CaptureAgent):
       else:
         self.blueIndeces.append(i)
 
-    self.origNumRedFood = len(gameState.getRedFood().asList())
-    self.origNumBlueFood = len(gameState.getBlueFood().asList())
+    self.origNumFood = len(self.getFood(gameState).asList())
+    #self.origNumBlueFood = len(gameState.getBlueFood().asList())
+
+    self.origFoodLocs = self.getFood(gameState).asList()
 
     myTeam = self.getTeam(gameState)
     for i in myTeam:
@@ -101,11 +103,11 @@ class MyAgent(CaptureAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
       """
       "*** YOUR CODE HERE ***"
-      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000, beta = 100000000)
+      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000000, beta = 1000000000000)
       return toRet
 
 
-  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -100000000, beta = 100000000):
+  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -1000000000000, beta = 1000000000000):
 
     
     bestScore = None
@@ -139,10 +141,11 @@ class MyAgent(CaptureAgent):
     if self.depthLimit <= depth:
       toRet = (self.evaluationFunction(gameState, agentIndex))
       return toRet
+  
 
     bm = None
     bestScore = None
-    v = -1000000000
+    v = -100000000000
 
     agentLocs = []
     for i in range (4): 
@@ -167,6 +170,7 @@ class MyAgent(CaptureAgent):
         score = self.minValue(suc, nextIndex , depth +1, alpha, beta)
         # if move == "Stop":
         #   score -= 10000
+        print move, score
         v = max(v, score)
 
         if v > beta:
@@ -187,7 +191,7 @@ class MyAgent(CaptureAgent):
       return (self.evaluationFunction(gameState, agentIndex))
 
     bm = None
-    v = 100000000
+    v = 100000000000
 
     agentLocs = []
     for i in range (4): 
@@ -241,7 +245,8 @@ class OffensiveAgent(MyAgent):
     myFood = self.getFood(gameState).asList()
     myPos = gameState.getAgentState(self.index).getPosition()
     minDistance = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
-
+    
+    features['foodEaten'] = self.origNumFood - len(myFood)
 
     features["closestFood"] = 1.0/(minDistance+1)
     features["amountOfFoodToEat"] = 1.0/(len(myFood)+1)
@@ -266,7 +271,8 @@ class OffensiveAgent(MyAgent):
     myPos = gameState.getAgentPosition(self.index)
     for e in enemies:
       if gameState.getAgentPosition(e) is not None:
-        #FIX TJHIS
+        if not self.getPreviousObservation():
+          continue
         if not gameState.getAgentState(e).isPacman and self.getPreviousObservation().getAgentState(self.index).isPacman:
           #myPos = gameState.getAgentPosition(self.index)
           otherPos = gameState.getAgentPosition(e)
@@ -276,6 +282,10 @@ class OffensiveAgent(MyAgent):
 
     if not dist is None and dist <4:
       features["tooClose"] =1.0
+      x = myPos[0]
+      features["x"] = x
+      distToHome = self.getMazeDistance(myPos, self.initialLocation)
+      features['distToHome'] = distToHome
     else:
       features['tooClose'] = 0
     #features["distanceToGhosts"] = dist
@@ -283,9 +293,12 @@ class OffensiveAgent(MyAgent):
     if gameState.getAgentState(self.index).numCarrying >= 2:
       x = myPos[0]
       features["x"] = x
+      distToHome = self.getMazeDistance(myPos, self.initialLocation)
+      features['distToHome'] = distToHome
       #features['amountOfFoodToEat'] = 0
 
-    features['score'] = gameState.getScore()*-100000
+
+    features['score'] = gameState.getScore()*-1
     toRet = self.eval(features)
     if gameState.isOnRedTeam(self.index):
       toRet *= -1
@@ -293,27 +306,20 @@ class OffensiveAgent(MyAgent):
     #print myPos[0], toRet #gameState.getAgentState(self.index).numCarrying
     
 
+
     #TODO
     #determine when PACMAN shoudl return to his side.
     #either if carrying a lot of food or being chased
     #give him a spot to go back to
     #
-   
-    #print myPos[0], features['score'], toRet
+
     return toRet
 
 
 
   def getWeights(self):
-    return {'x': 60000, "score": 99, "tooClose":-10000000000, "closestFood":45, "amountOfFoodToEat" : 900000}
+    return {'foodEaten': 10000, 'x': 60, "distToHome":60, "score": 9900, "tooClose":-10000000, "closestFood":.0045, "amountOfFoodToEat" : 900}
   
-  #TODO write different weight functions depending on what we're trying to do
-  def getReturnWeights(self):
-    pass
-
-  def getEatWeights(self):
-    {"closestFood":50, "amountOfFoodToEat" : 60000}
-    
 class DefensiveAgent(MyAgent):
   def evaluationFunction(self, gameState, index):
     features = util.Counter()
