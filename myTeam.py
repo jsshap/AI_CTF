@@ -54,7 +54,7 @@ class MyAgent(CaptureAgent):
     
 
     self.observationHistory = []
-    self.depthLimit = 4
+    self.depthLimit = 5
     
 
   
@@ -131,7 +131,7 @@ class MyAgent(CaptureAgent):
         worstAction = a
 
     #print bestAction, worstAction, bestScore, worstScore
-    print bestScore, bestAction, agentIndex
+    #print bestScore, bestAction, agentIndex
     return bestAction if agentIndex in self.blueIndeces else worstAction
 
   def maxValue(self, gameState, agentIndex, depth, alpha, beta):
@@ -157,8 +157,7 @@ class MyAgent(CaptureAgent):
 
 
     for move in gameState.getLegalActions(agentIndex):
-        if agentIndex == 1:
-          print move
+
         suc = gameState.generateSuccessor(agentIndex, move)
         
         if self.index == 3:
@@ -169,9 +168,10 @@ class MyAgent(CaptureAgent):
         # if move == "Stop":
         #   score -= 10000
         v = max(v, score)
-        print v
+
         if v > beta:
-          print "PRUNING Because v is", v, "beta is", beta
+          if agentIndex == 1:
+            print "PRUNING Because v is", v, "beta is", beta
           return (v)
         if (v > alpha):
           alpha = v
@@ -285,11 +285,12 @@ class OffensiveAgent(MyAgent):
       features["x"] = x
       #features['amountOfFoodToEat'] = 0
 
+    features['score'] = gameState.getScore()*-100000
     toRet = self.eval(features)
     if gameState.isOnRedTeam(self.index):
       toRet *= -1
     
-    print myPos[0], toRet #gameState.getAgentState(self.index).numCarrying
+    #print myPos[0], toRet #gameState.getAgentState(self.index).numCarrying
     
 
     #TODO
@@ -298,12 +299,13 @@ class OffensiveAgent(MyAgent):
     #give him a spot to go back to
     #
    
+    #print myPos[0], features['score'], toRet
     return toRet
 
 
 
   def getWeights(self):
-    return {'x': 60000, "tooClose":-10000000000, "closestFood":50, "amountOfFoodToEat" : 60000}
+    return {'x': 60000, "score": 99, "tooClose":-10000000000, "closestFood":45, "amountOfFoodToEat" : 900000}
   
   #TODO write different weight functions depending on what we're trying to do
   def getReturnWeights(self):
