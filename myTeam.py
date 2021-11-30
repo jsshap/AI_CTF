@@ -101,11 +101,11 @@ class MyAgent(CaptureAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
       """
       "*** YOUR CODE HERE ***"
-      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000, beta = 100000)
+      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000, beta = 100000000)
       return toRet
 
 
-  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -100000, beta = 100000):
+  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -100000000, beta = 100000000):
 
     
     bestScore = None
@@ -116,7 +116,8 @@ class MyAgent(CaptureAgent):
       suc = gameState.generateSuccessor(agentIndex, a)
       if agentIndex in self.blueIndeces:
         val = self.maxValue(suc, agentIndex, depth, alpha, beta)
-        if a == "Stop" and len( self.getFood(gameState).asList()) <= 2: val -= 10
+        if a == "Stop" and len( self.getFood(gameState).asList()) <= 2: 
+          val -= 10
       else:
         
         val = self.minValue(suc, agentIndex, depth, alpha, beta)
@@ -130,6 +131,7 @@ class MyAgent(CaptureAgent):
         worstAction = a
 
     #print bestAction, worstAction, bestScore, worstScore
+    print bestScore, bestAction, agentIndex
     return bestAction if agentIndex in self.blueIndeces else worstAction
 
   def maxValue(self, gameState, agentIndex, depth, alpha, beta):
@@ -155,6 +157,8 @@ class MyAgent(CaptureAgent):
 
 
     for move in gameState.getLegalActions(agentIndex):
+        if agentIndex == 1:
+          print move
         suc = gameState.generateSuccessor(agentIndex, move)
         
         if self.index == 3:
@@ -165,7 +169,9 @@ class MyAgent(CaptureAgent):
         # if move == "Stop":
         #   score -= 10000
         v = max(v, score)
+        print v
         if v > beta:
+          print "PRUNING Because v is", v, "beta is", beta
           return (v)
         if (v > alpha):
           alpha = v
@@ -261,10 +267,11 @@ class OffensiveAgent(MyAgent):
     for e in enemies:
       if gameState.getAgentPosition(e) is not None:
         #FIX TJHIS
-        if not gameState.getAgentState(e).isPacman and gameState.getAgentState(self.index).isPacman:
+        if not gameState.getAgentState(e).isPacman and self.getPreviousObservation().getAgentState(self.index).isPacman:
           #myPos = gameState.getAgentPosition(self.index)
           otherPos = gameState.getAgentPosition(e)
           dist = self.getMazeDistance(myPos, otherPos)
+          break
 
 
     if not dist is None and dist <4:
@@ -273,11 +280,17 @@ class OffensiveAgent(MyAgent):
       features['tooClose'] = 0
     #features["distanceToGhosts"] = dist
 
+    if gameState.getAgentState(self.index).numCarrying >= 2:
+      x = myPos[0]
+      features["x"] = x
+      #features['amountOfFoodToEat'] = 0
+
     toRet = self.eval(features)
     if gameState.isOnRedTeam(self.index):
       toRet *= -1
     
-    #print toRet
+    print myPos[0], toRet #gameState.getAgentState(self.index).numCarrying
+    
 
     #TODO
     #determine when PACMAN shoudl return to his side.
@@ -290,7 +303,7 @@ class OffensiveAgent(MyAgent):
 
 
   def getWeights(self):
-    return {"tooClose":-10000000000, "closestFood":50, "amountOfFoodToEat" : 60000}
+    return {'x': 60000, "tooClose":-10000000000, "closestFood":50, "amountOfFoodToEat" : 60000}
   
   #TODO write different weight functions depending on what we're trying to do
   def getReturnWeights(self):
