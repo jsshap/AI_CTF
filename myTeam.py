@@ -138,6 +138,7 @@ class MyAgent(CaptureAgent):
 
   def maxValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
     #print depth
+    print depth
     if self.depthLimit <= depth:
       toRet = (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
       return toRet
@@ -169,7 +170,7 @@ class MyAgent(CaptureAgent):
         score = self.minValue(suc, nextIndex , depth +1, alpha, beta, actionToGetHere = move, oldState= oldState)
         # if move == "Stop":
         #   score -= 10000
-        print move, score
+        #print move, score
         v = max(v, score)
 
         if v > beta:
@@ -182,11 +183,12 @@ class MyAgent(CaptureAgent):
           bestScore = v
         #print v
     #print v
-    print bm, "BEST"
+    #print bm, "BEST"
     return (v)
 
 
   def minValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
+    print depth
     if self.depthLimit <= depth:
       return (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
 
@@ -235,7 +237,7 @@ class MyAgent(CaptureAgent):
     return features * self.getWeights()
 
 class OffensiveAgent(MyAgent):
-  def evaluationFunction(self, gameState, index, action = None, oldState = None):
+  def evaluationFunction(self, gameState, index, action, oldState):
     """
     Returns a counter of features for the state
     """
@@ -243,41 +245,70 @@ class OffensiveAgent(MyAgent):
     features = util.Counter()
 
     myFood = self.getFood(gameState).asList()
+    previousStateFood = len(self.getFood(oldState).asList())
     myPos = gameState.getAgentState(self.index).getPosition()
-    minDistance = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
+    distToClosestFood = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
+
+    locationsOfGhosts = []
+
+    enemies = self.getOpponents(gameState)
+
+    for e in enemies:
+      locationsOfGhosts.append (gameState.getAgentPosition(e))
+
+    #generally stay far from ghosts
+    totalDistanceToGhosts = 0
+    for d in locationsOfGhosts:
+      if d is not None:
+        toAdd = self.getMazeDistance(gameState.getAgentPosition(self.index), d)
+        totalDistanceToGhosts += toAdd
+
+    distanceToCloseGhost = 7
+    for e in enemies:
+      if gameState.getAgentPosition(e) is not None:
+        #skip thsi if first move and no previous state
+        if not self.getPreviousObservation():
+          continue
+        #if the enemy is not pacman and we were pacman, dist is the distance from the dude
+        if not gameState.getAgentState(e).isPacman and oldState.getAgentState(self.index).isPacman:
+          #myPos = gameState.getAgentPosition(self.index)
+          otherPos = gameState.getAgentPosition(e)
+          distanceToCloseGhost = (self.getMazeDistance(myPos, otherPos))
+          break
     
+    numFoodBeingCarried = gameState.getAgentState(self.index).numCarrying
+    oldFoodBeingCarried = oldState.getAgentState(self.index).numCarrying
+    # if self.getPreviousObservation():
+    #   oldFoodBeingCarried = self.getPreviousObservation().getAgentState(self.index).numCarrying
+    # else:
+    #   oldFoodBeingCarried = 0
+    justAte = oldFoodBeingCarried < numFoodBeingCarried
+    justAte = previousStateFood - len(myFood)
+    #print justAte, myPos, oldFoodBeingCarried, numFoodBeingCarried, previousStateFood, len(myFood)
+
+    score = gameState.getScore()*-1
+    oldScore = oldState.getScore() * -1
+
+    justScored = oldScore < score
+
+    features['distToClosestFood'] = 1.0/(distToClosestFood+1)
+    if justAte > 0:
+      features['justAte'] = 1
+
+    features['numFoodRemaining'] = 10.0/(len(myFood)+1)
+    features['totalEaten'] = self.origNumFood - len(myFood)
+
+    
+
+
+    '''
+    
+
     #features['foodEaten'] = self.origNumFood - len(myFood)
 
     features["closestFood"] = 1.0/(minDistance+1)
     features["amountOfFoodToEat"] = 1.0/(len(myFood)+1)
 
-    distancesToGhosts = []
-
-    enemies = self.getOpponents(gameState)
-
-    for e in enemies:
-      distancesToGhosts.append (gameState.getAgentPosition(e))
-    
-    dist = 0
-    for d in distancesToGhosts:
-      if d is not None:
-        toAdd = self.getMazeDistance(gameState.getAgentPosition(self.index), d)
-        dist += toAdd
-
-    
-
-    enemies = self.getOpponents(gameState)
-    dist = None
-    myPos = gameState.getAgentPosition(self.index)
-    for e in enemies:
-      if gameState.getAgentPosition(e) is not None:
-        if not self.getPreviousObservation():
-          continue
-        if not gameState.getAgentState(e).isPacman and self.getPreviousObservation().getAgentState(self.index).isPacman:
-          #myPos = gameState.getAgentPosition(self.index)
-          otherPos = gameState.getAgentPosition(e)
-          dist = self.getMazeDistance(myPos, otherPos)
-          break
 
 
     if not dist is None and dist <4:
@@ -301,28 +332,28 @@ class OffensiveAgent(MyAgent):
     print features
 
     features['score'] = gameState.getScore()*-1
-    toRet = self.eval(features)
-    if gameState.isOnRedTeam(self.index):
-      toRet *= -1
+
+
+
+    features['justAte'] = -1*(len(self.getFood(oldState).asList()) - len(myFood))
+    
+
     
     #print myPos[0], toRet #gameState.getAgentState(self.index).numCarrying
     
+    '''
 
-
-    #TODO
-    #determine when PACMAN shoudl return to his side.
-    #either if carrying a lot of food or being chased
-    #give him a spot to go back to
-    #
-   
-    #print myPos, features, toRet
-    #print features['ate'] * self.getWeights()['ate']
+    toRet = self.eval(features)
+    if gameState.isOnRedTeam(self.index):
+      toRet *= -1
+    #print toRet, features
     return toRet
 
 
 
   def getWeights(self):
-    return {'foodEaten': 1000, 'x': 6, "distToHome":6, "score": 990, "tooClose":-1000000, "closestFood":.00045, "amountOfFoodToEat" : 90}
+    return {'totalEaten': 100, 'distToClosestFood': .001, 'justAte': 10000}
+    #return {'justAte': 100, 'foodEaten': 1000, 'x': 6, "distToHome":6, "score": 990, "tooClose":-10000000000, "closestFood":.00045, "amountOfFoodToEat" : 90}
   
 class DefensiveAgent(MyAgent):
   def evaluationFunction(self, gameState, index, action = None, oldState = None):
