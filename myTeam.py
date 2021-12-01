@@ -138,7 +138,7 @@ class MyAgent(CaptureAgent):
 
   def maxValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
     #print depth
-    print depth
+    #print depth
     if self.depthLimit <= depth:
       toRet = (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
       return toRet
@@ -188,7 +188,7 @@ class MyAgent(CaptureAgent):
 
 
   def minValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
-    print depth
+    #print depth
     if self.depthLimit <= depth:
       return (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
 
@@ -298,8 +298,9 @@ class OffensiveAgent(MyAgent):
     features['numFoodRemaining'] = 10.0/(len(myFood)+1)
     features['totalEaten'] = self.origNumFood - len(myFood)
 
-    
-
+    distanceToHome = self.getMazeDistance(myPos, self.initialLocation)
+    if numFoodBeingCarried > 2 or oldFoodBeingCarried > 2:
+      features['closeToHome'] = 1.0/(distanceToHome+1)
 
     '''
     
@@ -352,7 +353,7 @@ class OffensiveAgent(MyAgent):
 
 
   def getWeights(self):
-    return {'totalEaten': 100, 'distToClosestFood': .001, 'justAte': 10000}
+    return {'totalEaten': 100, 'distToClosestFood': .001, 'justAte': 10000, "closeToHome": 1000000000}
     #return {'justAte': 100, 'foodEaten': 1000, 'x': 6, "distToHome":6, "score": 990, "tooClose":-10000000000, "closestFood":.00045, "amountOfFoodToEat" : 90}
   
 class DefensiveAgent(MyAgent):
