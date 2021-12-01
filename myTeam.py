@@ -54,7 +54,7 @@ class MyAgent(CaptureAgent):
     
 
     self.observationHistory = []
-    self.depthLimit = 0
+    self.depthLimit = 4
     
 
   
@@ -103,11 +103,11 @@ class MyAgent(CaptureAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
       """
       "*** YOUR CODE HERE ***"
-      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000000, beta = 1000000000000)
+      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000000, beta = 1000000000000, oldState = gameState)
       return toRet
 
 
-  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -1000000000000, beta = 1000000000000):
+  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -1000000000000, beta = 1000000000000, oldState = None, action = None):
 
     
     bestScore = None
@@ -117,12 +117,12 @@ class MyAgent(CaptureAgent):
     for a in gameState.getLegalActions(agentIndex):
       suc = gameState.generateSuccessor(agentIndex, a)
       if agentIndex in self.blueIndeces:
-        val = self.maxValue(suc, agentIndex, depth, alpha, beta)
+        val = self.maxValue(suc, agentIndex, depth, alpha, beta , oldState = oldState, actionToGetHere = a)
         if a == "Stop" and len( self.getFood(gameState).asList()) <= 2: 
           val -= 10
       else:
         
-        val = self.minValue(suc, agentIndex, depth, alpha, beta)
+        val = self.minValue(suc, agentIndex, depth, alpha, beta , oldState = oldState, actionToGetHere = a)
         if a == "Stop" and len (self.getFood(gameState).asList()) <= 2: val += 10
       #min = self.minValue(suc, agentIndex, depth, alpha, beta)
       if bestScore is None or val > bestScore:
@@ -136,12 +136,11 @@ class MyAgent(CaptureAgent):
     #print bestScore, bestAction, agentIndex
     return bestAction if agentIndex in self.blueIndeces else worstAction
 
-  def maxValue(self, gameState, agentIndex, depth, alpha, beta):
+  def maxValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
     #print depth
     if self.depthLimit <= depth:
-      toRet = (self.evaluationFunction(gameState, agentIndex))
+      toRet = (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
       return toRet
-  
 
     bm = None
     bestScore = None
@@ -154,7 +153,7 @@ class MyAgent(CaptureAgent):
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
       import random
-      return self.evaluationFunction(gameState, agentIndex)
+      return self.evaluationFunction(gameState, agentIndex, action = actionToGetHere, oldState = oldState)
     #print ("HJERER")
 
 
@@ -167,7 +166,7 @@ class MyAgent(CaptureAgent):
           nextIndex = 0
         else:
           nextIndex = self.index+1
-        score = self.minValue(suc, nextIndex , depth +1, alpha, beta)
+        score = self.minValue(suc, nextIndex , depth +1, alpha, beta, actionToGetHere = move, oldState= oldState)
         # if move == "Stop":
         #   score -= 10000
         print move, score
@@ -183,12 +182,13 @@ class MyAgent(CaptureAgent):
           bestScore = v
         #print v
     #print v
+    print bm, "BEST"
     return (v)
 
 
-  def minValue(self, gameState, agentIndex, depth, alpha, beta):
+  def minValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
     if self.depthLimit <= depth:
-      return (self.evaluationFunction(gameState, agentIndex))
+      return (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
 
     bm = None
     v = 100000000000
@@ -200,7 +200,7 @@ class MyAgent(CaptureAgent):
     locationOfThisGuy = agentLocs[agentIndex]
     if locationOfThisGuy is None:
       import random
-      return self.evaluationFunction(gameState, agentIndex)
+      return self.evaluationFunction(gameState, agentIndex, oldState = oldState, action= actionToGetHere)
     #print v, "1"
     #print agentLocs[agentIndex]
     for move in gameState.getLegalActions(agentIndex):
@@ -211,7 +211,7 @@ class MyAgent(CaptureAgent):
         else:
           nextIndex = self.index+1
 
-        score = self.maxValue(suc,  nextIndex ,depth + 1, alpha, beta)
+        score = self.maxValue(suc,  nextIndex ,depth + 1, alpha, beta , oldState = oldState, actionToGetHere = move)
         #print score, agentIndex
         # print score, "score"
         # print v, "2"
@@ -235,7 +235,7 @@ class MyAgent(CaptureAgent):
     return features * self.getWeights()
 
 class OffensiveAgent(MyAgent):
-  def evaluationFunction(self, gameState, index):
+  def evaluationFunction(self, gameState, index, action = None, oldState = None):
     """
     Returns a counter of features for the state
     """
@@ -246,7 +246,7 @@ class OffensiveAgent(MyAgent):
     myPos = gameState.getAgentState(self.index).getPosition()
     minDistance = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
     
-    features['foodEaten'] = self.origNumFood - len(myFood)
+    #features['foodEaten'] = self.origNumFood - len(myFood)
 
     features["closestFood"] = 1.0/(minDistance+1)
     features["amountOfFoodToEat"] = 1.0/(len(myFood)+1)
@@ -292,11 +292,13 @@ class OffensiveAgent(MyAgent):
 
     if gameState.getAgentState(self.index).numCarrying >= 2:
       x = myPos[0]
-      features["x"] = x
+      #features["x"] = x
       distToHome = self.getMazeDistance(myPos, self.initialLocation)
       features['distToHome'] = distToHome
       #features['amountOfFoodToEat'] = 0
 
+    features['foodEaten'] = self.origNumFood - len(myFood)
+    print features
 
     features['score'] = gameState.getScore()*-1
     toRet = self.eval(features)
@@ -312,16 +314,18 @@ class OffensiveAgent(MyAgent):
     #either if carrying a lot of food or being chased
     #give him a spot to go back to
     #
-
+   
+    #print myPos, features, toRet
+    #print features['ate'] * self.getWeights()['ate']
     return toRet
 
 
 
   def getWeights(self):
-    return {'foodEaten': 10000, 'x': 60, "distToHome":60, "score": 9900, "tooClose":-10000000, "closestFood":.0045, "amountOfFoodToEat" : 900}
+    return {'foodEaten': 1000, 'x': 6, "distToHome":6, "score": 990, "tooClose":-1000000, "closestFood":.00045, "amountOfFoodToEat" : 90}
   
 class DefensiveAgent(MyAgent):
-  def evaluationFunction(self, gameState, index):
+  def evaluationFunction(self, gameState, index, action = None, oldState = None):
     features = util.Counter()
 
     enemies = self.getOpponents(gameState)
