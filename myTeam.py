@@ -302,6 +302,11 @@ class OffensiveAgent(MyAgent):
     if numFoodBeingCarried > 2 or oldFoodBeingCarried > 2:
       features['closeToHome'] = 1.0/(distanceToHome+1)
 
+    #THIS SHIT NEEDS TO BE FIXEd
+    if distanceToCloseGhost <4:
+      features['closeToGhost'] = -1/(distanceToCloseGhost+1)
+      features['closeToHome'] = 0.0010/(distanceToHome+1)
+
     '''
     
 
@@ -353,7 +358,7 @@ class OffensiveAgent(MyAgent):
 
 
   def getWeights(self):
-    return {'totalEaten': 100, 'distToClosestFood': .001, 'justAte': 10000, "closeToHome": 1000000000}
+    return {'closeToGhost':100000000000, 'totalEaten': 100, 'distToClosestFood': .001, 'justAte': 10000, "closeToHome": 1000000000}
     #return {'justAte': 100, 'foodEaten': 1000, 'x': 6, "distToHome":6, "score": 990, "tooClose":-10000000000, "closestFood":.00045, "amountOfFoodToEat" : 90}
   
 class DefensiveAgent(MyAgent):
