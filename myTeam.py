@@ -50,16 +50,18 @@ class MyAgent(CaptureAgent):
   """
  
   def __init__(self, index = 0, epsilon = .2, training = True, discount = .5, alpha = .2):
+
     self.index = index
     
 
     self.observationHistory = []
-    self.depthLimit = 4
+    self.depthLimit = 5
     
 
   
   def registerInitialState(self, gameState):
     #super(type(MyAgent)).registerInitialState(gameState)
+    CaptureAgent.registerInitialState(self, gameState)
     self.red = gameState.isOnRedTeam(self.index)
     import distanceCalculator
     self.distancer = distanceCalculator.Distancer(gameState.data.layout)
@@ -70,6 +72,8 @@ class MyAgent(CaptureAgent):
     self.blueIndeces = []
 
     self.initialLocation = gameState.getAgentPosition(self.index)
+
+    
 
     for i in range(4):
       if gameState.isOnRedTeam(i):
@@ -103,6 +107,7 @@ class MyAgent(CaptureAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
       """
       "*** YOUR CODE HERE ***"
+      #self.debugClear()
       toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000000, beta = 1000000000000, oldState = gameState)
       return toRet
 
@@ -157,11 +162,10 @@ class MyAgent(CaptureAgent):
       return self.evaluationFunction(gameState, agentIndex, action = actionToGetHere, oldState = oldState)
     #print ("HJERER")
 
-
-
     for move in gameState.getLegalActions(agentIndex):
 
         suc = gameState.generateSuccessor(agentIndex, move)
+        
         
         if self.index == 3:
           nextIndex = 0
@@ -350,6 +354,16 @@ class OffensiveAgent(MyAgent):
     '''
 
     toRet = self.eval(features)
+    if action is "Stop":
+      toRet -=100
+    
+
+    # self.debugDraw(myPos, [1,0,0])
+    
+    # self.debugDraw([l for l in locationsOfGhosts if l is not None], [0,1,0])
+    
+    
+
     if gameState.isOnRedTeam(self.index):
       toRet *= -1
     #print toRet, features
@@ -394,7 +408,7 @@ class DefensiveAgent(MyAgent):
     
     closest = None
     closestDist = None
-    avgFood = (averageXOfMyFood/len(foodImDefending), averageYOfMyFood/len(foodImDefending))
+    avgFood = (averageXOfMyFood/(len(foodImDefending)+1), averageYOfMyFood/(len(foodImDefending)+1))
     for f in foodImDefending:
       d = util.manhattanDistance(f, avgFood)
       if closest is None or d< closestDist:
