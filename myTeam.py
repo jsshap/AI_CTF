@@ -55,7 +55,7 @@ class MyAgent(CaptureAgent):
     
 
     self.observationHistory = []
-    self.depthLimit = 5
+    self.depthLimit = 4
     
 
   
@@ -108,7 +108,9 @@ class MyAgent(CaptureAgent):
       """
       "*** YOUR CODE HERE ***"
       #self.debugClear()
+      start = time.time()
       toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000000, beta = 1000000000000, oldState = gameState)
+      print 'eval time for agent %d: %.4f' % (self.index, time.time() - start), "BAD" if time.time()-start >1 else ""
       return toRet
 
 
@@ -179,8 +181,8 @@ class MyAgent(CaptureAgent):
 
         if v > beta:
           if agentIndex == 1:
-            print "PRUNING Because v is", v, "beta is", beta
-          return (v)
+            #print "PRUNING Because v is", v, "beta is", beta
+            return (v)
         if (v > alpha):
           alpha = v
           bm = move
@@ -245,6 +247,8 @@ class OffensiveAgent(MyAgent):
     """
     Returns a counter of features for the state
     """
+    
+
     toRet = 0
     features = util.Counter()
 
@@ -309,50 +313,10 @@ class OffensiveAgent(MyAgent):
     #THIS SHIT NEEDS TO BE FIXEd
     if distanceToCloseGhost <4:
       features['closeToGhost'] = -1/(distanceToCloseGhost+1)
-      features['closeToHome'] = 0.0010/(distanceToHome+1)
-
-    '''
-    
-
-    #features['foodEaten'] = self.origNumFood - len(myFood)
-
-    features["closestFood"] = 1.0/(minDistance+1)
-    features["amountOfFoodToEat"] = 1.0/(len(myFood)+1)
-
-
-
-    if not dist is None and dist <4:
-      features["tooClose"] =1.0
-      x = myPos[0]
-      features["x"] = x
-      distToHome = self.getMazeDistance(myPos, self.initialLocation)
-      features['distToHome'] = distToHome
-    else:
-      features['tooClose'] = 0
-    #features["distanceToGhosts"] = dist
-
-    if gameState.getAgentState(self.index).numCarrying >= 2:
-      x = myPos[0]
-      #features["x"] = x
-      distToHome = self.getMazeDistance(myPos, self.initialLocation)
-      features['distToHome'] = distToHome
-      #features['amountOfFoodToEat'] = 0
-
-    features['foodEaten'] = self.origNumFood - len(myFood)
-    print features
-
-    features['score'] = gameState.getScore()*-1
-
-
-
-    features['justAte'] = -1*(len(self.getFood(oldState).asList()) - len(myFood))
-    
+      features['closeToHome'] = 0.000010/(distanceToHome+1)
+      features['distToClosestFood'] = 0
 
     
-    #print myPos[0], toRet #gameState.getAgentState(self.index).numCarrying
-    
-    '''
-
     toRet = self.eval(features)
     if action is "Stop":
       toRet -=100
