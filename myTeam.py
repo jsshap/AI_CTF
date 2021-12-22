@@ -39,8 +39,8 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
   # The following line is an example only; feel free to change it.
-  a = MyAgent(index = firstIndex)
-  b = MyAgent( index = secondIndex)
+  a = OffensiveAgent(index = firstIndex)
+  b = DefensiveAgent( index = secondIndex)
   return [a, b]
 
 
@@ -50,175 +50,348 @@ class MyAgent(CaptureAgent):
   """
  
   def __init__(self, index = 0, epsilon = .2, training = True, discount = .5, alpha = .2):
+
     self.index = index
-    self.epsilon = epsilon
-    self.training = training
-    self.weights = util.Counter()
-    
-    features = ['score', 'numFood', 'height', 'xPos', 'nearestFood']
-    for feat in features:
-      self.weights[feat] = 1
     
 
-    self.discount = discount
-    self.alpha = alpha
     self.observationHistory = []
+    self.depthLimit = 4
     
 
-
-  def readWeights(self):
-    try:
-      f = open ('weights.txt', 'r')
-      lines = f.readLines()
-      for l in lines.split(","):
-        self.weights[l[0]] = float(l[1])
-    except:
-      pass
-
-  def writeWeights(self):
-    f = open("weights", "w")
-    for w in self.weights:
-      f.write(w + "," + str(self.weights[w])+"\n")
-    f.close()
   
   def registerInitialState(self, gameState):
     #super(type(MyAgent)).registerInitialState(gameState)
+    CaptureAgent.registerInitialState(self, gameState)
     self.red = gameState.isOnRedTeam(self.index)
     import distanceCalculator
     self.distancer = distanceCalculator.Distancer(gameState.data.layout)
 
     # comment this out to forgo maze distance computation and use manhattan distances
     self.distancer.getMazeDistances()
-    self.readWeights()
-  
+    self.redIndeces = []
+    self.blueIndeces = []
 
+    self.initialLocation = gameState.getAgentPosition(self.index)
+
+    
+
+    for i in range(4):
+      if gameState.isOnRedTeam(i):
+        self.redIndeces.append(i)
+      else:
+        self.blueIndeces.append(i)
+
+    self.origNumFood = len(self.getFood(gameState).asList())
+    #self.origNumBlueFood = len(gameState.getBlueFood().asList())
+
+    self.origFoodLocs = self.getFood(gameState).asList()
+
+    myTeam = self.getTeam(gameState)
+    for i in myTeam:
+      if not i == self.index:
+        self.partnerIndex = i
+  
+  '''
   def chooseAction(self, gameState):
     """
     Picks among the actions with the highest Q(s,a).
     """
 
     actions = gameState.getLegalActions(self.index)
-    best = self.computeActionFromQValues(gameState)
-    if not actions:
-      toReturn = None
-    if util.flipCoin(self.epsilon and self.training):
-      toReturn = random.choice(actions)
-    else:
-      toReturn = best
-    if toReturn != None and self.training:
-      self.updateWeights(gameState, toReturn)
-    #print self.weights
-    #print self.index
-    #print toReturn, best
     return toReturn
+    '''
 
-  def computeActionFromQValues(self, state):
-    bestScore = self.computeValueFromQValues(state)
-    if not state.getLegalActions(self.index):
-      return 0
-    actions = state.getLegalActions(self.index)
-    for a in actions:
-      if self.getQValue(state, a) == bestScore:
-        return a
-  def computeValueFromQValues(self, state):
-      actions = state.getLegalActions(self.index)
-      if not actions:
-        return 0.0
+
+  def chooseAction(self, gameState):
+      """
+        Returns the minimax action using self.depth and self.evaluationFunction
+      """
+      "*** YOUR CODE HERE ***"
+      #self.debugClear()
+      start = time.time()
+      toRet = self.alphaBeta(gameState,self.index, depth = 0, alpha = -100000000000, beta = 1000000000000, oldState = gameState)
+      print 'eval time for agent %d: %.4f' % (self.index, time.time() - start), "BAD" if time.time()-start >1 else ""
+      return toRet
+
+
+  def alphaBeta (self, gameState, agentIndex = 0, depth = 0, alpha = -1000000000000, beta = 1000000000000, oldState = None, action = None):
+
+    
+    bestScore = None
+    bestAction = None
+    worstAction = None
+    worstScore = None
+    for a in gameState.getLegalActions(agentIndex):
+      suc = gameState.generateSuccessor(agentIndex, a)
+      if agentIndex in self.blueIndeces:
+        val = self.maxValue(suc, agentIndex, depth, alpha, beta , oldState = oldState, actionToGetHere = a)
+        if a == "Stop" and len( self.getFood(gameState).asList()) <= 2: 
+          val -= 10
       else:
-        options = []
-        for a in actions:
-          options.append(self.getQValue(state,a))
-        return max (options)
+        
+        val = self.minValue(suc, agentIndex, depth, alpha, beta , oldState = oldState, actionToGetHere = a)
+        if a == "Stop" and len (self.getFood(gameState).asList()) <= 2: val += 10
+      #min = self.minValue(suc, agentIndex, depth, alpha, beta)
+      if bestScore is None or val > bestScore:
+        bestScore = val
+        bestAction = a
+      if worstScore is None or val < worstScore:
+        worstScore = val
+        worstAction = a
 
-  def getQValue(self, state, actions):
-    features = self.getFeatures(state, actions)
-    return self.weights * features
+    #print bestAction, worstAction, bestScore, worstScore
+    #print bestScore, bestAction, agentIndex
+    return bestAction if agentIndex in self.blueIndeces else worstAction
+
+  def maxValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
+    #print depth
+    #print depth
+    if self.depthLimit <= depth:
+      toRet = (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
+      return toRet
+
+    bm = None
+    bestScore = None
+    v = -100000000000
+
+    agentLocs = []
+    for i in range (4): 
+      agentLocs.append(gameState.getAgentPosition(i))
+
+    locationOfThisGuy = agentLocs[agentIndex]
+    if locationOfThisGuy is None:
+      import random
+      return self.evaluationFunction(gameState, agentIndex, action = actionToGetHere, oldState = oldState)
+    #print ("HJERER")
+
+    for move in gameState.getLegalActions(agentIndex):
+
+        suc = gameState.generateSuccessor(agentIndex, move)
+        
+        
+        if self.index == 3:
+          nextIndex = 0
+        else:
+          nextIndex = self.index+1
+        score = self.minValue(suc, nextIndex , depth +1, alpha, beta, actionToGetHere = move, oldState= oldState)
+        # if move == "Stop":
+        #   score -= 10000
+        #print move, score
+        v = max(v, score)
+
+        if v > beta:
+          if agentIndex == 1:
+            #print "PRUNING Because v is", v, "beta is", beta
+            return (v)
+        if (v > alpha):
+          alpha = v
+          bm = move
+          bestScore = v
+        #print v
+    #print v
+    #print bm, "BEST"
+    return (v)
 
 
-  def evaluate(self, gameState, action):
-    """
-    Computes a linear combination of features and feature weights
-    """
-    #this should decide how much we like a state and update the weights to reflect that
-    return gameState.getScore() - self.getMazeDistance(gameState.getRedFood().asList()[0],gameState.getAgentPosition(self.index))
+  def minValue(self, gameState, agentIndex, depth, alpha, beta , oldState = None, actionToGetHere = None):
+    #print depth
+    if self.depthLimit <= depth:
+      return (self.evaluationFunction(gameState, agentIndex, oldState = oldState, action = actionToGetHere))
 
-  def getFeatures(self, gameState, action):
+    bm = None
+    v = 100000000000
+
+    agentLocs = []
+    for i in range (4): 
+      agentLocs.append(gameState.getAgentPosition(i))
+    #print agentLocs
+    locationOfThisGuy = agentLocs[agentIndex]
+    if locationOfThisGuy is None:
+      import random
+      return self.evaluationFunction(gameState, agentIndex, oldState = oldState, action= actionToGetHere)
+    #print v, "1"
+    #print agentLocs[agentIndex]
+    for move in gameState.getLegalActions(agentIndex):
+        suc = gameState.generateSuccessor(agentIndex, move)
+
+        if self.index == 3:
+          nextIndex = 0
+        else:
+          nextIndex = self.index+1
+
+        score = self.maxValue(suc,  nextIndex ,depth + 1, alpha, beta , oldState = oldState, actionToGetHere = move)
+        #print score, agentIndex
+        # print score, "score"
+        # print v, "2"
+        # if move == "Stop":
+        #   score += 10000
+        v = min(v, score)
+
+        # print ("HERE", v)
+        # print v, "2.5"
+        if v < alpha:
+          return (v)
+        if (v < beta):
+          beta = v
+          bm = move
+        # print v, "3"
+
+    return (v)
+
+
+  def eval(self, features):
+    return features * self.getWeights()
+
+class OffensiveAgent(MyAgent):
+  def evaluationFunction(self, gameState, index, action, oldState):
     """
     Returns a counter of features for the state
     """
-    #pacman position
-    #getScore()
-    #getCapsules returns list of positions
-    #getNumFood()
-    #getFood()
+    
 
-
-    #IMPORTANT: Need to generalize for both colors. Make it our food, their food
-
-    IAmBlue = not gameState.isOnRedTeam(self.index)
-
+    toRet = 0
     features = util.Counter()
-    features['score'] = gameState.getScore()
-    features['numFood'] = len(gameState.getRedFood().asList())
-    features['height'] = gameState.getAgentPosition(self.index)[1] 
-    features['xPos'] = gameState.getAgentPosition(self.index)[0]
-    loc = gameState.getRedFood().asList()[0]
-    #print loc, gameState.getAgentPosition(self.index)
-    features['nearestFood'] = self.getMazeDistance(loc, gameState.getAgentPosition(self.index))
 
+    myFood = self.getFood(gameState).asList()
+    previousStateFood = len(self.getFood(oldState).asList())
+    myPos = gameState.getAgentState(self.index).getPosition()
+    distToClosestFood = min([self.getMazeDistance(myPos, food) for food in myFood]+[10000])
 
-    indecesOfMyTeam = []
-    indecesOfOtherTeam = []
+    locationsOfGhosts = []
 
-    for i in range(3):
-      if IAmBlue and isOnRedTeam(i):
-        indecesOfOtherTeam.append(i)
-      else:
-        indecesOfMyTeam.append(i)
+    enemies = self.getOpponents(gameState)
 
+    for e in enemies:
+      locationsOfGhosts.append (gameState.getAgentPosition(e))
 
-    distances = gameState.getAgentDistances()
+    #generally stay far from ghosts
+    totalDistanceToGhosts = 0
+    for d in locationsOfGhosts:
+      if d is not None:
+        toAdd = self.getMazeDistance(gameState.getAgentPosition(self.index), d)
+        totalDistanceToGhosts += toAdd
 
-    #prob = gameState.getDistanceProb() #takes true, noisy
+    distanceToCloseGhost = 7
+    for e in enemies:
+      if gameState.getAgentPosition(e) is not None:
+        #skip thsi if first move and no previous state
+        if not self.getPreviousObservation():
+          continue
+        #if the enemy is not pacman and we were pacman, dist is the distance from the dude
+        if not gameState.getAgentState(e).isPacman and oldState.getAgentState(self.index).isPacman:
+          #myPos = gameState.getAgentPosition(self.index)
+          otherPos = gameState.getAgentPosition(e)
+          distanceToCloseGhost = (self.getMazeDistance(myPos, otherPos))
+          break
+    
+    numFoodBeingCarried = gameState.getAgentState(self.index).numCarrying
+    oldFoodBeingCarried = oldState.getAgentState(self.index).numCarrying
+    # if self.getPreviousObservation():
+    #   oldFoodBeingCarried = self.getPreviousObservation().getAgentState(self.index).numCarrying
+    # else:
+    #   oldFoodBeingCarried = 0
+    justAte = oldFoodBeingCarried < numFoodBeingCarried
+    justAte = previousStateFood - len(myFood)
+    #print justAte, myPos, oldFoodBeingCarried, numFoodBeingCarried, previousStateFood, len(myFood)
 
+    score = gameState.getScore()*-1
+    oldScore = oldState.getScore() * -1
 
-    print distances, self.index
+    justScored = oldScore < score
 
-    agentLocs = []
-    for i in range (3): 
-      agentLocs.append(gameState.getAgentPosition(i))
+    features['distToClosestFood'] = 1.0/(distToClosestFood+1)
+    if justAte > 0:
+      features['justAte'] = 1
 
-    print agentLocs
+    features['numFoodRemaining'] = 10.0/(len(myFood)+1)
+    features['totalEaten'] = self.origNumFood - len(myFood)
 
-    blueIndeces = gameState.getBlueTeamIndices()
-    redIndeces = gameState.getRedTeamIndices()
+    distanceToHome = self.getMazeDistance(myPos, self.initialLocation)
+    if numFoodBeingCarried > 2 or oldFoodBeingCarried > 2:
+      features['closeToHome'] = 1.0/(distanceToHome+1)
 
-    return features
-  
-  def updateWeights(self, gameState, action):
+    #THIS SHIT NEEDS TO BE FIXEd
+    if distanceToCloseGhost <4:
+      features['closeToGhost'] = -1/(distanceToCloseGhost+1)
+      features['closeToHome'] = 0.000010/(distanceToHome+1)
+      features['distToClosestFood'] = 0
 
-    newState = gameState.generateSuccessor(self.index, action)
-    r= self.evaluate(newState, action)
-    Q_of_SA = self.getQValue(gameState, action)
-    weights = self.getWeights()
-    max = self.computeValueFromQValues(newState)
+    
+    toRet = self.eval(features)
+    if action is "Stop":
+      toRet -=100
+    
 
-    difference = (r+self.discount*max) - Q_of_SA
+    # self.debugDraw(myPos, [1,0,0])
+    
+    # self.debugDraw([l for l in locationsOfGhosts if l is not None], [0,1,0])
+    
+    
 
-    features = self.getFeatures(gameState, action)
-    for f in features:
-      weights[f] = weights[f] + (self.alpha * difference *features[f])
-
-
-
-    self.weights.normalize()
+    if gameState.isOnRedTeam(self.index):
+      toRet *= -1
+    #print toRet, features
+    return toRet
 
 
 
   def getWeights(self):
-    """
-    Normally, weights do not depend on the gamestate.  They can be either
-    a counter or a dictionary.
-    """
-    return self.weights
+    return {'closeToGhost':100000000000, 'totalEaten': 100, 'distToClosestFood': .001, 'justAte': 10000, "closeToHome": 1000000000}
+    #return {'justAte': 100, 'foodEaten': 1000, 'x': 6, "distToHome":6, "score": 990, "tooClose":-10000000000, "closestFood":.00045, "amountOfFoodToEat" : 90}
+  
+class DefensiveAgent(MyAgent):
+  def evaluationFunction(self, gameState, index, action = None, oldState = None):
+    features = util.Counter()
 
+    enemies = self.getOpponents(gameState)
+    dist = 0
+    myPos = gameState.getAgentPosition(self.index)
+    for e in enemies:
+      if gameState.getAgentPosition(e) is not None:
+
+
+        #FIX TJHIS
+        if gameState.getAgentState(e).isPacman:
+          #myPos = gameState.getAgentPosition(self.index)
+          otherPos = gameState.getAgentPosition(e)
+          dist = self.getMazeDistance(myPos, otherPos)
+    
+
+    
+    features["distToThem"] = dist
+    
+    averageXOfMyFood = 0
+    averageYOfMyFood = 0
+
+    foodImDefending = self.getFoodYouAreDefending(gameState).asList()
+
+    #print foodImDefending
+    for f in foodImDefending:
+      averageXOfMyFood += f[0]
+      averageYOfMyFood += f[1]
+    
+    closest = None
+    closestDist = None
+    avgFood = (averageXOfMyFood/(len(foodImDefending)+1), averageYOfMyFood/(len(foodImDefending)+1))
+    for f in foodImDefending:
+      d = util.manhattanDistance(f, avgFood)
+      if closest is None or d< closestDist:
+        closest = f
+        closestDist = d
+    
+
+    #FIX THIS
+    
+    distFromAvgLocationOfFood = self.getMazeDistance(myPos, closest)
+
+    features['distanceToMyFood'] = distFromAvgLocationOfFood
+
+    toRet = self.eval(features)
+    if gameState.isOnRedTeam(self.index):
+      toRet *= -1
+    
+    return toRet
+
+  def getWeights(self):
+    weights = {"distToThem": -50, "distanceToMyFood": -5}
+    return weights
